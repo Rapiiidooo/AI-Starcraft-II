@@ -1,3 +1,5 @@
+import time
+
 from pysc2.agents import base_agent
 from pysc2.lib import actions
 
@@ -20,6 +22,7 @@ class Simple(base_agent.BaseAgent):
 
     def step(self, obs):
         super(Simple, self).step(obs)
+        time.sleep(0.5)
         if self.fen_x < self.MAP_X_SIZE - self.FEN_DX:
             self.fen_x = self.fen_x + self.FEN_DX
         else:
@@ -30,5 +33,5 @@ class Simple(base_agent.BaseAgent):
                 self.fen_x = 12
                 self.fen_y = 12
                 self.nb_scan = self.nb_scan + 1
-        print("== %d" % self.nb_scan)
+        print("[{}, {}] ".format(int(self.fen_x), int(self.fen_y)))
         return actions.FUNCTIONS.move_camera([int(self.fen_x), int(self.fen_y)])

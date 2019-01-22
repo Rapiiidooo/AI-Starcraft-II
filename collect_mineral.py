@@ -1,63 +1,82 @@
 from pysc2.agents import base_agent
 from pysc2.lib import actions
 from pysc2.lib import features
-from pysc2.lib import units
 from math import sqrt
-import sys
-
-
-def printf(str_format, *args):
-	sys.stdout.write(str_format % args)
-
 
 # Functions
 _NOOP = actions.FUNCTIONS.no_op.id
 _X_COORD = features.FeatureUnit.x
 _Y_COORD = features.FeatureUnit.y
+_PLAYER_SELF = features.PlayerRelative.SELF
+_PLAYER_NEUTRAL = features.PlayerRelative.NEUTRAL
+_PLAYER_ENEMY = features.PlayerRelative.ENEMY
 
+FUNCTIONS = actions.FUNCTIONS
 
 # python3 -m pysc2.bin.agent --map CollectMineralShards
 # --agent locate_units.Simple --max_episodes 1 
 # --use_feature_units
 
+
 class Simple(base_agent.BaseAgent):
-	def setup(self, obs_spec, action_spec):
-		super(Simple, self).setup(obs_spec, action_spec)
-		if "feature_units" not in obs_spec:
-			raise Exception("feature_units observation NOT ACTIVATED")
+    def __init__(self):
+        super().__init__()
+        self._previous_mineral_xy = [-1, -1]
+        self._marine_selected = False
 
-	def step(self, obs):
-		super(Simple, self).step(obs)
-		unites = [unit for unit in obs.observation.feature_units if unit.alliance == features.PlayerRelative.SELF]
-		shards = [shard for shard in obs.observation.feature_units if shard.alliance == features.PlayerRelative.NEUTRAL]
+    def setup(self, obs_spec, action_spec):
+        super(Simple, self).setup(obs_spec, action_spec)
+        if "feature_units" not in obs_spec:
+            raise Exception("feature_units observation NOT ACTIVATED")
 
-		for unit in unites:
-			self.get_nearest(unit, shards)
+    def reset(self):
+        super(Simple, self).reset()
+        self._marine_selected = False
+        self._previous_mineral_xy = [-1, -1]
 
-		# printf("--- %d units : ", len(unites))
-		# for u in unites:
-		# 	printf("(%d %d) ", u[_X_COORD], u[_Y_COORD])
-		# print("")
+    def step(self, obs):
+        super(Simple, self).step(obs)
+        unites = [unit for unit in obs.observation.feature_units if unit.alliance == features.PlayerRelative.SELF]
+        shards = [shard for shard in obs.observation.feature_units if shard.alliance == features.PlayerRelative.NEUTRAL]
+        if not unites:
+            return FUNCTIONS.no_op()
+        unite = next((m for m in unites if m.is_selected == self._marine_selected), unites[0])
+        unite_xy = [unite.x, unite.y]
 
-		# printf("--- %d shards : ", len(shards))
-		# for u in shards:
-		# 	printf("(%d %d) ", u[_X_COORD], u[_Y_COORD])
-		# print("")
-		return actions.FUNCTIONS.no_op()
+        if not unite.is_selected:
+            # Nothing selected or the wrong marine is selected.
+            self._marine_selected = True
+            return FUNCTIONS.select_point("select", unite_xy)
 
-	def get_nearest(self, unit, targets):
-		closest = targets[0]
-		unita, unitb = unit
+        if FUNCTIONS.Move_screen.id in obs.observation.available_actions:
+            for index, shard in enumerate(shards):
+                # Don't go for the same mineral shard as other marine.
+                if self._previous_mineral_xy == [shard.x, shard.y]:
+                    shards.pop(index)
 
-		closesta, closestb = closest
-		dclosest = self.distance_euclid(unita, unitb, closesta, closestb)
-		for x, y, i in enumerate(targets):
-			dtmp = self.distance_euclid(unita, unitb, x, y)
-			if dclosest > dtmp:
-				dclosest = dtmp
-				closest = targets[i]
-		return closest
+            if shards:
+                closest_mineral = self.get_nearest(unite, shards)
 
-	@staticmethod
-	def distance_euclid(xa, xb, ya, yb):
-		return sqrt((xb - xa) ** 2 + (yb - ya) ** 2)
+                # Swap to the other marine.
+                self._marine_selected = False
+                self._previous_mineral_xy = [closest_mineral.x, closest_mineral.y]
+                return FUNCTIONS.Move_screen("now", self._previous_mineral_xy)
+        return FUNCTIONS.no_op()
+
+    def move_unit(self):
+        pass
+
+    def get_nearest(self, unit, targets):
+        closest = targets[0]
+
+        dclosest = self.distance_euclid(unit.x, unit.y, closest.x, closest.y)
+        for index, target in enumerate(targets):
+            dtmp = self.distance_euclid(unit.x, unit.y, target.x, target.y)
+            if dclosest > dtmp:
+                dclosest = dtmp
+                closest = targets[index]
+        return closest
+
+    @staticmethod
+    def distance_euclid(xa, xb, ya, yb):
+        return sqrt((xa - xb) ** 2 + (ya - yb) ** 2)
