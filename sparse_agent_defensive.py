@@ -15,6 +15,8 @@ from pysc2.lib import features
 
 SCORE_FILE = 'scores.txt'
 
+_STEPS_BEFORE_WIN = 5000
+
 _NO_OP = actions.FUNCTIONS.no_op.id
 _SELECT_POINT = actions.FUNCTIONS.select_point.id
 _MOVE_CAMERA = 1
@@ -239,7 +241,7 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         return smart_action, int(x), int(y)
 
     @staticmethod
-    def save_score(score, time_elapsed):
+    def save_score(score, steps):
         try:
             num_lines = sum(1 for line in open(SCORE_FILE)) + 1
         except:
@@ -247,13 +249,13 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         with open(SCORE_FILE, "a+") as scores_file:
             print("{};{};{}"
                   # .format(num_lines, datetime.timedelta(seconds=(time.time() - start_time)), score),
-                  .format(num_lines, time_elapsed, score),
+                  .format(num_lines, steps, score),
                   file=scores_file)
 
     def ending_game(self, obs):
         # reward = obs.reward
-        time_elapsed = int(time.time() - self.start_time)
-        reward = 1 if time_elapsed > 150 else -1
+        score = obs.observation["score_cumulative"]["score"]
+        reward = 1 if self.steps > _STEPS_BEFORE_WIN or score > 2000 else -1
 
         if obs.reward > 0:
             reward = 10
@@ -265,7 +267,7 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         self.previous_state = None
         self.move_number = 0
 
-        self.save_score(obs.observation["score_cumulative"]["score"], time_elapsed)
+        self.save_score(obs.observation["score_cumulative"]["score"], self.steps)
         return actions.FunctionCall(_NO_OP, [])
 
     def init_base(self, obs, unit_type):
@@ -275,13 +277,9 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         if self.base_top_left == 1:
             self.cc_minimap_x = 18
             self.cc_minimap_y = 24
-            # self.zone_def_tmp_x = 38
-            # self.zone_def_tmp_y = 30
         else:
             self.cc_minimap_x = 40
             self.cc_minimap_y = 47
-            # self.zone_def_tmp_x = 20
-            # self.zone_def_tmp_y = 42
 
     @staticmethod
     def get_excluded_actions(

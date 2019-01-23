@@ -1,4 +1,6 @@
 from matplotlib import pyplot
+from scipy.interpolate import make_interp_spline, BSpline
+import numpy as np
 
 
 def main():
@@ -16,7 +18,7 @@ def main():
     try:
         pyplot.plot(nb_games, timers)
         pyplot.title('SC II Defensive AI TIMER')
-        pyplot.ylabel('timer (150 = approx. 20~30 minutes')
+        pyplot.ylabel('steps')
         pyplot.xlabel('nb_games')
         pyplot.savefig('plot-timer.png')
         pyplot.clf()
