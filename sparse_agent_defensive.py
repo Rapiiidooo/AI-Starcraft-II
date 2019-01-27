@@ -4,7 +4,6 @@ import random
 import sys
 import time
 
-# from sklearn.cluster import KMeans
 import numpy as np
 import pandas as pd
 from absl import flags

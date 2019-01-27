@@ -1,6 +1,4 @@
 from matplotlib import pyplot
-from scipy.interpolate import make_interp_spline, BSpline
-import numpy as np
 
 
 def main():
