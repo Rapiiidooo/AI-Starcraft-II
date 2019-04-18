@@ -68,9 +68,7 @@ ACTION_ID_BUILD_BARRACKS = 3
 ACTION_ID_BUILD_MARINE = 4
 ACTION_ID_BUILD_MISSILE_TURRET = 5
 ACTION_ID_BUILD_ENGINEERING_BAY = 6
-# ACTION_ID_LOAD_BUNKER = 7
-# ACTION_ID_SCV_INACTIV_TO_MINE must be the last one before ACTION_ID_DEFEND_POSITION
-ACTION_ID_SCV_INACTIV_TO_MINE = 7
+ACTION_ID_SCV_INACTIV_TO_MINE = 7  # must be the last one before ACTION_ID_DEFEND_POSITION
 ACTION_ID_DEFEND_POSITION = []
 
 ACTION_DO_NOTHING = 'donothing'
@@ -81,7 +79,6 @@ ACTION_BUILD_MARINE = 'buildmarine'
 ACTION_BUILD_MISSILE_TURRET = 'buildmissileturret'
 ACTION_BUILD_ENGINEERING_BAY = 'buildengineeringbay'
 ACTION_SCV_INACTIV_TO_MINE = 'reactiveworker'
-# ACTION_LOAD_BUNKER = 'loadbunker'
 ACTION_DEFEND_POSITION = 'defend'
 
 ACTIONS_SCV = [
@@ -99,7 +96,6 @@ SMART_ACTIONS = [
     ACTION_BUILD_MARINE,
     ACTION_BUILD_MISSILE_TURRET,
     ACTION_BUILD_ENGINEERING_BAY,
-    # ACTION_LOAD_BUNKER,
     ACTION_SCV_INACTIV_TO_MINE
 ]
 
@@ -242,7 +238,7 @@ class SparseAgentDefensive(base_agent.BaseAgent):
     @staticmethod
     def save_score(score, steps):
         try:
-            num_lines = sum(1 for line in open(SCORE_FILE)) + 1
+            num_lines = sum(1 for _ in open(SCORE_FILE)) + 1
         except:
             num_lines = 1
         with open(SCORE_FILE, "a+") as scores_file:
@@ -327,9 +323,6 @@ class SparseAgentDefensive(base_agent.BaseAgent):
                 engineering_bay is False:
             for action in ACTION_ID_DEFEND_POSITION:
                 excluded_actions.append(action)
-
-        # if bunker_count > 0 and army_supply > 0:
-        #     excluded_actions.append(ACTION_ID_LOAD_BUNKER)
 
         return excluded_actions
 
