@@ -604,6 +604,34 @@ class SparseAgentDefensive(base_agent.BaseAgent):
     #     else:
     #         return actions.FunctionCall(_NO_OP, [])
 
+    @staticmethod
+    def action_do_nothing():
+        return actions.FunctionCall(_NO_OP, [])
+
+    def action_build_scv(self):
+        pass
+
+    def action_build_supply_depot(self):
+        pass
+
+    def action_build_barracks(self):
+        pass
+
+    def action_build_marine(self):
+        pass
+
+    def action_build_missile_turret(self):
+        pass
+
+    def action_build_engineering_bay(self):
+        pass
+
+    def action_scv_inactiv_to_mine(self):
+        pass
+
+    def action_defend_position(self):
+        pass
+
 
 def run(agent):
     try:
