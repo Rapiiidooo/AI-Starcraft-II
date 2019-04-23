@@ -12,13 +12,32 @@ from pysc2.env import sc2_env
 from pysc2.lib import actions
 from pysc2.lib import features
 
-SCORE_FILE = 'scores.txt'
+# region Variables
 
+# MyGlobalVar
+# ------------------------------------
+_SCORE_FILE = 'scores.txt'
 _STEPS_BEFORE_WIN = 5000
 
+# PySc2 Var
+# ------------------------------------
 _NO_OP = actions.FUNCTIONS.no_op.id
-_SELECT_POINT = actions.FUNCTIONS.select_point.id
+_MOVE_MINIMAP = actions.FUNCTIONS.Move_minimap.id
+_MOVE_SCREEN = actions.FUNCTIONS.Move_screen.id
+_CAMERA = features.MINIMAP_FEATURES.camera.index
 _MOVE_CAMERA = 1
+
+_PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
+_UNIT_TYPE = features.SCREEN_FEATURES.unit_type.index
+_PLAYER_ID = features.SCREEN_FEATURES.player_id.index
+_PLAYER_SELF = 1
+_PLAYER_HOSTILE = 4
+_ARMY_SUPPLY = 5
+
+_SELECT_ARMY = actions.FUNCTIONS.select_army.id
+_SELECT_IDLE_WORKER = actions.FUNCTIONS.select_idle_worker.id
+_SELECT_POINT = actions.FUNCTIONS.select_point.id
+
 _BUILD_SUPPLY_DEPOT = actions.FUNCTIONS.Build_SupplyDepot_screen.id
 _BUILD_BARRACKS = actions.FUNCTIONS.Build_Barracks_screen.id
 _BUILD_MISSILE_TURRET = actions.FUNCTIONS.Build_MissileTurret_screen.id
@@ -28,21 +47,9 @@ _LOAD_BUNKER_SCREEN = actions.FUNCTIONS.Load_Bunker_screen.id
 
 _TRAIN_MARINE = actions.FUNCTIONS.Train_Marine_quick.id
 _TRAIN_SCV = actions.FUNCTIONS.Train_SCV_quick.id
-_SELECT_ARMY = actions.FUNCTIONS.select_army.id
-_SELECT_IDLE_WORKER = actions.FUNCTIONS.select_idle_worker.id
-_MOVE_MINIMAP = actions.FUNCTIONS.Move_minimap.id
-_MOVE_SCREEN = actions.FUNCTIONS.Move_screen.id
+
 _ATTACK_MINIMAP = actions.FUNCTIONS.Attack_minimap.id
 _HARVEST_GATHER = actions.FUNCTIONS.Harvest_Gather_screen.id
-
-_PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
-_CAMERA = features.MINIMAP_FEATURES.camera.index
-_UNIT_TYPE = features.SCREEN_FEATURES.unit_type.index
-_PLAYER_ID = features.SCREEN_FEATURES.player_id.index
-
-_PLAYER_SELF = 1
-_PLAYER_HOSTILE = 4
-_ARMY_SUPPLY = 5
 
 _TERRAN_COMMANDCENTER = 18
 _TERRAN_SUPPLY_DEPOT = 19
@@ -115,6 +122,7 @@ for index, route in enumerate(MAP_ROUTE):
     routex, routey = route
     SMART_ACTIONS.append(ACTION_DEFEND_POSITION + '_' + str(routex) + '_' + str(routey))
     ACTION_ID_DEFEND_POSITION.append(ACTION_ID_SCV_INACTIV_TO_MINE + index + 1)
+# endregion
 
 
 # Stolen from https://github.com/MorvanZhou/Reinforcement-learning-with-tensorflow
@@ -193,8 +201,6 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         self.cc_screen_x = None
         self.cc_minimap_y = None
         self.cc_minimap_x = None
-        # self.zone_def_tmp_x = None
-        # self.zone_def_tmp_y = None
 
         self.move_number = 0
 
@@ -238,10 +244,10 @@ class SparseAgentDefensive(base_agent.BaseAgent):
     @staticmethod
     def save_score(score, steps):
         try:
-            num_lines = sum(1 for _ in open(SCORE_FILE)) + 1
+            num_lines = sum(1 for _ in open(_SCORE_FILE)) + 1
         except:
             num_lines = 1
-        with open(SCORE_FILE, "a+") as scores_file:
+        with open(_SCORE_FILE, "a+") as scores_file:
             print("{};{};{}"
                   # .format(num_lines, datetime.timedelta(seconds=(time.time() - start_time)), score),
                   .format(num_lines, steps, score),
