@@ -76,7 +76,8 @@ ACTION_ID_BUILD_BARRACKS = 3
 ACTION_ID_BUILD_MARINE = 4
 ACTION_ID_BUILD_MISSILE_TURRET = 5
 ACTION_ID_BUILD_ENGINEERING_BAY = 6
-ACTION_ID_SCV_INACTIV_TO_MINE = 7  # must be the last one before ACTION_ID_DEFEND_POSITION
+ACTION_ID_ATTACK = 7
+ACTION_ID_SCV_INACTIV_TO_MINE = 8  # must be the last one before ACTION_ID_DEFEND_POSITION
 ACTION_ID_DEFEND_POSITION = []
 
 ACTION_DO_NOTHING = 'donothing'
@@ -86,6 +87,7 @@ ACTION_BUILD_SUPPLY_DEPOT = 'buildsupplydepot'
 ACTION_BUILD_BARRACKS = 'buildbarracks'
 ACTION_BUILD_MISSILE_TURRET = 'buildmissileturret'
 ACTION_BUILD_ENGINEERING_BAY = 'buildengineeringbay'
+ACTION_ATTACK = 'attack'
 ACTION_SCV_INACTIV_TO_MINE = 'reactiveworker'
 ACTION_DEFEND_POSITION = 'defend'
 
@@ -109,19 +111,15 @@ SMART_ACTIONS = [
     ACTION_TRAIN_MARINE,
     ACTION_BUILD_MISSILE_TURRET,
     ACTION_BUILD_ENGINEERING_BAY,
+    ACTION_ATTACK,
     ACTION_SCV_INACTIV_TO_MINE
 ]
-
+# attack haut gauche x_18 y_24
 MAP_ROUTE = [
-    [12, 12],
-    [32, 12],
-    [52, 12],
-    [12, 32],
-    [32, 32],
-    [52, 32],
-    [12, 52],
-    [32, 52],
-    [52, 52]
+    [36, 20],
+    [38, 32],
+    [22, 40],
+    [20, 50]
 ]
 
 for index, route in enumerate(MAP_ROUTE):
@@ -184,8 +182,10 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         self.obs = None
         self.unit_type = None
         self.current_state = np.zeros(12)
-        # self.testx = 0
-        # self.testy = 0
+
+        # Variable pour tester la position à la main
+        self.testx = 0
+        self.testy = 0
 
         if os.path.isfile(DATA_FILE + '.gz'):
             self.qlearn.q_table = pd.read_pickle(DATA_FILE + '.gz', compression='gzip')
@@ -319,21 +319,27 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         supply_free = supply_limit - supply_used
         inactiv_worker = obs.observation['player'][7]
 
+        # Si pas de centre de command disponible ou le nombre de SCV >= 15 (à l'écran) ou nb total de worker > 20
         if self.cc_count == 0 or self.scv_count >= 15 or worker_supply > 20:
             excluded_actions.append(ACTION_ID_BUILD_SCV)
 
+        # Si nb de supply depot >= 6 ou pas de worker ou place disponible > 4
         if self.supply_depot_count >= 6 or worker_supply == 0 or supply_free > 4:
             excluded_actions.append(ACTION_ID_BUILD_SUPPLY_DEPOT)
 
+        # Si pas de supply depot ou nb de barrack >= 2 ou pas de worker
         if self.supply_depot_count == 0 or self.barracks_count >= 2 or worker_supply == 0:
             excluded_actions.append(ACTION_ID_BUILD_BARRACKS)
 
+        # Si pas de place ou pas de barrack
         if supply_free == 0 or self.barracks_count == 0:
             excluded_actions.append(ACTION_ID_BUILD_MARINE)
 
+        # Si pas de worker inactif
         if inactiv_worker <= 0:
             excluded_actions.append(ACTION_ID_SCV_INACTIV_TO_MINE)
 
+        # Si pas de supply ou pas de barrack ou pas de worker ou usine déja construite
         if \
                 self.supply_depot_count == 0 or \
                 self.barracks_count == 0 or \
@@ -341,6 +347,7 @@ class SparseAgentDefensive(base_agent.BaseAgent):
                 self.engineering_bay_built is True:
             excluded_actions.append(ACTION_ID_BUILD_ENGINEERING_BAY)
 
+        # Si pas de supply ou pas de barrack ou pas de worker ou tourelle missile construite ou usine pas construite
         if \
                 self.supply_depot_count == 0 or \
                 self.barracks_count == 0 or \
@@ -349,6 +356,7 @@ class SparseAgentDefensive(base_agent.BaseAgent):
                 self.engineering_bay_built is False:
             excluded_actions.append(ACTION_ID_BUILD_MISSILE_TURRET)
 
+        # Si pas de supply ou pas de barrack ou pas de worker ou pas d'armée ou usine pas construite
         if self.supply_depot_count == 0 or \
                 self.barracks_count == 0 or \
                 worker_supply == 0 or \
@@ -356,6 +364,10 @@ class SparseAgentDefensive(base_agent.BaseAgent):
                 self.engineering_bay_built is False:
             for action in ACTION_ID_DEFEND_POSITION:
                 excluded_actions.append(action)
+
+        # Si l'armée est inférieur à 15
+        if army_supply <= 15:
+            excluded_actions.append(ACTION_ID_ATTACK)
 
         return excluded_actions
 
@@ -404,6 +416,8 @@ class SparseAgentDefensive(base_agent.BaseAgent):
             return self.action_defend_position()
         elif self.smart_action == ACTION_SCV_INACTIV_TO_MINE:
             return self.action_scv_inactiv_to_mine()
+        elif self.smart_action == ACTION_ATTACK:
+            return self.action_attack()
         elif self.smart_action == ACTION_DO_NOTHING:
             return self.action_do_nothing()
         return self.move_camera_to_base()
@@ -538,6 +552,17 @@ class SparseAgentDefensive(base_agent.BaseAgent):
                 return actions.FunctionCall(_LOAD_BUNKER_SCREEN, [_NOT_QUEUED, target])
         return self.action_re_init_smart_action()
 
+    def action_attack(self):
+        if self.unit_selected != "ARMY":
+            return self.select_unit("ARMY")
+
+        if _ATTACK_MINIMAP in self.obs.observation['available_actions']:
+            self.end_action()
+            if self.base_top_left:
+                return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [39, 45]])
+            return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [21, 24]])
+        return self.action_re_init_smart_action()
+
     # ACTIONS GROUPES
     # ------------------------------------------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------------------------------------------
@@ -646,20 +671,20 @@ class SparseAgentDefensive(base_agent.BaseAgent):
     # FIN DES ACTIONS
 
     # Check by self hand some position
-    # def handself_checking():
-    #     user_input = input("Enter  coord")
-    #     try:
-    #         if user_input.__contains__('x'):
-    #             self.testx = int(user_input.replace('x', ''))
-    #         if user_input.__contains__('y'):
-    #             self.testy = int(user_input.replace('y', ''))
-    #     except:
-    #         pass
-    #     print(self.testx, ', ', self.testy)
-    #     if _MOVE_CAMERA in obs.observation["available_actions"]:
-    #         return actions.FUNCTIONS.move_camera([self.testx, self.testy])
-    #     else:
-    #         return actions.FunctionCall(_NO_OP, [])
+    def handself_checking(self):
+        user_input = input("Enter  coord")
+        try:
+            if user_input.__contains__('x'):
+                self.testx = int(user_input.replace('x', ''))
+            if user_input.__contains__('y'):
+                self.testy = int(user_input.replace('y', ''))
+        except:
+            pass
+        print(self.testx, ', ', self.testy)
+        if _MOVE_CAMERA in self.obs.observation["available_actions"]:
+            return actions.FUNCTIONS.move_camera([self.testx, self.testy])
+        else:
+            return actions.FunctionCall(_NO_OP, [])
 
 
 def save_score(score, steps):
