@@ -80,10 +80,10 @@ ACTION_ID_SCV_INACTIV_TO_MINE = 7  # must be the last one before ACTION_ID_DEFEN
 ACTION_ID_DEFEND_POSITION = []
 
 ACTION_DO_NOTHING = 'donothing'
-ACTION_BUILD_SCV = 'buildscv'
+ACTION_TRAIN_SCV = 'trainscv'
+ACTION_TRAIN_MARINE = 'trainmarine'
 ACTION_BUILD_SUPPLY_DEPOT = 'buildsupplydepot'
 ACTION_BUILD_BARRACKS = 'buildbarracks'
-ACTION_BUILD_MARINE = 'buildmarine'
 ACTION_BUILD_MISSILE_TURRET = 'buildmissileturret'
 ACTION_BUILD_ENGINEERING_BAY = 'buildengineeringbay'
 ACTION_SCV_INACTIV_TO_MINE = 'reactiveworker'
@@ -96,17 +96,17 @@ ACTIONS_BUILD_BUILDING = [
     ACTION_BUILD_ENGINEERING_BAY
 ]
 
-ACTIONS_BUILD_UNIT = [
-    ACTION_BUILD_SCV,
-    ACTION_BUILD_MARINE
+ACTIONS_TRAIN_UNIT = [
+    ACTION_TRAIN_SCV,
+    ACTION_TRAIN_MARINE
 ]
 
 SMART_ACTIONS = [
     ACTION_DO_NOTHING,
-    ACTION_BUILD_SCV,
+    ACTION_TRAIN_SCV,
     ACTION_BUILD_SUPPLY_DEPOT,
     ACTION_BUILD_BARRACKS,
-    ACTION_BUILD_MARINE,
+    ACTION_TRAIN_MARINE,
     ACTION_BUILD_MISSILE_TURRET,
     ACTION_BUILD_ENGINEERING_BAY,
     ACTION_SCV_INACTIV_TO_MINE
@@ -204,12 +204,6 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         else:
             self.cc_minimap_x = 40
             self.cc_minimap_y = 47
-
-    def move_camera_to_base(self):
-        if _MOVE_CAMERA in self.obs.observation["available_actions"]:
-            return actions.FUNCTIONS.move_camera([self.cc_minimap_x, self.cc_minimap_y])
-        else:
-            return actions.FunctionCall(_NO_OP, [])
 
     def transform_distance(self, x, x_distance, y, y_distance):
         if not self.base_top_left:
@@ -340,10 +334,18 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         if inactiv_worker <= 0:
             excluded_actions.append(ACTION_ID_SCV_INACTIV_TO_MINE)
 
-        if self.supply_depot_count == 0 or self.barracks_count == 0 or worker_supply == 0 or self.engineering_bay_built is True:
+        if \
+                self.supply_depot_count == 0 or \
+                self.barracks_count == 0 or \
+                worker_supply == 0 or \
+                self.engineering_bay_built is True:
             excluded_actions.append(ACTION_ID_BUILD_ENGINEERING_BAY)
 
-        if self.supply_depot_count == 0 or self.barracks_count == 0 or worker_supply == 0 or self.missile_turret_count > 0 is True or \
+        if \
+                self.supply_depot_count == 0 or \
+                self.barracks_count == 0 or \
+                worker_supply == 0 or \
+                self.missile_turret_count > 0 is True or \
                 self.engineering_bay_built is False:
             excluded_actions.append(ACTION_ID_BUILD_MISSILE_TURRET)
 
@@ -381,6 +383,10 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         # Initialisation de l'état actuelle des éléments du joueurs.
         self.init_current_state(obs)
 
+        # Ajout de la précèdente action et des scores y résultant dans la table Qlearning
+        if self.previous_action is not None:
+            self.qlearn.learn(str(self.previous_state), self.previous_action, 0, str(self.current_state))
+
         # Choix de la smart_action en fonction des éléments du jeu, si plus aucune action en cours
         if self.smart_action is None:
             self.init_move_number()
@@ -389,19 +395,17 @@ class SparseAgentDefensive(base_agent.BaseAgent):
             self.previous_action = self.qlearn.choose_action(str(self.current_state), excluded_actions)
             self.smart_action, self.smart_action_x, self.smart_action_y = self.split_action(self.previous_action)
 
-        # Ajout de la précèdente action et des scores y résultant dans la table Qlearning
-        if self.previous_action is not None:
-            self.qlearn.learn(str(self.previous_state), self.previous_action, 0, str(self.current_state))
-
         # smart action choisi par le qlearning ?
         if self.smart_action in ACTIONS_BUILD_BUILDING:
             return self.actions_build_building()
-        elif self.smart_action in ACTIONS_BUILD_UNIT:
+        elif self.smart_action in ACTIONS_TRAIN_UNIT:
             return self.actions_build_unit()
         elif self.smart_action == ACTION_DEFEND_POSITION:
             return self.action_defend_position()
         elif self.smart_action == ACTION_SCV_INACTIV_TO_MINE:
             return self.action_scv_inactiv_to_mine()
+        elif self.smart_action == ACTION_DO_NOTHING:
+            return self.action_do_nothing()
         return self.move_camera_to_base()
 
     def select_unit(self, unit):
@@ -413,6 +417,11 @@ class SparseAgentDefensive(base_agent.BaseAgent):
                 target = [unit_x[i], unit_y[i]]
                 self.unit_selected = "SCV"
                 return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])
+        # Séléctionner un worker inactif
+        elif unit == "IDLEWORKER":
+            if _SELECT_IDLE_WORKER in self.obs.observation['available_actions']:
+                self.unit_selected = "IDLEWORKER"
+                return actions.FunctionCall(_SELECT_IDLE_WORKER, [_NOT_QUEUED])
         # Séléctionner l'armée totale
         elif unit == "ARMY":
             if _SELECT_ARMY in self.obs.observation['available_actions']:
@@ -425,14 +434,109 @@ class SparseAgentDefensive(base_agent.BaseAgent):
                 target = [self.bunker_x[i], self.bunker_y[i]]
                 self.unit_selected = "BUNKER"
                 return actions.FunctionCall(_SELECT_POINT, [_SELECT_ALL, target])
-        # Sélécionner une caserne
+        # Séléctionner une caserne
         elif unit == "BARRACK":
             if self.barracks_y.any():
                 i = random.randint(0, len(self.barracks_y) - 1)
                 target = [self.barracks_x[i], self.barracks_y[i]]
                 self.unit_selected = "BARRACK"
                 return actions.FunctionCall(_SELECT_POINT, [_SELECT_ALL, target])
+        # Séléctionner le command center
+        elif unit == "COMMANDCENTER":
+            if self.cc_count > 0:
+                target = [int(self.cc_x.mean()), int(self.cc_y.mean())]
+                self.unit_selected = "COMMANDCENTER"
+                return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])
         return self.move_camera_to_base()
+
+    # ACTIONS GLOBAL
+    # ------------------------------------------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------------------------------------------
+    def move_camera_to_base(self):
+        if _MOVE_CAMERA in self.obs.observation["available_actions"]:
+            return actions.FUNCTIONS.move_camera([self.cc_minimap_x, self.cc_minimap_y])
+        else:
+            return actions.FunctionCall(_NO_OP, [])
+
+    def end_action(self):
+        self.smart_action = None
+        self.init_move_number()
+
+    def action_re_init_smart_action(self):
+        self.end_action()
+        return self.move_camera_to_base()
+
+    def action_do_nothing(self):
+        self.end_action()
+        return actions.FunctionCall(_NO_OP, [])
+
+    def action_scv_inactiv_to_mine(self):
+        if self.unit_selected != "IDLEWORKER":
+            return self.select_unit("IDLEWORKER")
+
+        # Déplacer le worker vers le minerai s'il est disponible à l'écran
+        if _HARVEST_GATHER in self.obs.observation['available_actions']:
+            unit_y, unit_x = (self.unit_type == _NEUTRAL_MINERAL_FIELD).nonzero()
+
+            if unit_y.any():
+                i = random.randint(0, len(unit_y) - 1)
+
+                m_x = unit_x[i]
+                m_y = unit_y[i]
+
+                target = [int(m_x), int(m_y)]
+                self.end_action()
+                return actions.FunctionCall(_HARVEST_GATHER, [_QUEUED, target])
+        # Sinon le déplacer vers la base
+        else:
+            if _MOVE_SCREEN in self.obs.observation['available_actions']:
+                target = [self.cc_minimap_x, self.cc_minimap_y]
+                self.end_action()
+                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, target])
+        return self.action_re_init_smart_action()
+
+    def action_defend_position(self):
+        if self.unit_selected != "SCV" and self.move_number == 0:
+            return self.select_unit("SCV")
+
+        # Déplacer la caméra vers le zone choisi par la smart action
+        if self.move_number == 0:
+            if _MOVE_CAMERA in self.obs.observation["available_actions"]:
+                self.inc_move_number()
+                return actions.FUNCTIONS.move_camera([self.smart_action_x, self.smart_action_y])
+        # Construire dans la zone à un point random au moins 2 bunker et jusqu'à 2 tourelles
+        elif self.move_number == 1:
+            self.inc_move_number()
+            x = random.randint(0, 83)
+            y = random.randint(0, 83)
+            if 0 <= self.bunker_count < 2 and _BUILD_BUNKER in self.obs.observation['available_actions']:
+                return actions.FunctionCall(_BUILD_BUNKER, [_NOT_QUEUED, [x, y]])
+            elif 0 <= self.missile_turret_count < 2 and _BUILD_MISSILE_TURRET in self.obs.observation['available_actions']:
+                if _BUILD_MISSILE_TURRET in self.obs.observation['available_actions']:
+                    return actions.FunctionCall(_BUILD_MISSILE_TURRET, [_NOT_QUEUED, [x, y]])
+
+        # Si l'armée n'est pas séléctionnée
+        if self.unit_selected != "ARMY" and self.move_number == 2:
+            return self.select_unit("ARMY")
+        # Si l'armée est séléctionnée
+        elif self.move_number == 2:
+            self.inc_move_number()
+            if self.bunker_y.any() and _MOVE_SCREEN in self.obs.observation['available_actions']:
+                i = random.randint(0, len(self.bunker_y) - 1)
+                target = [self.bunker_x[i], self.bunker_y[i]]
+                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, target])
+            elif _ATTACK_MINIMAP in self.obs.observation['available_actions']:
+                return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [self.smart_action_x, self.smart_action_y]])
+
+        # Séléctionner le bunker pour y faire rentrer un marine
+        if self.unit_selected != "BUNKER" and self.move_number == 3 and self.bunker_y.any():
+            return self.select_unit("BUNKER")
+        elif self.move_number == 3:
+            self.inc_move_number()
+            if _LOAD_BUNKER_SCREEN in self.obs.observation['available_actions'] and self.marine_count > 0:
+                target = [int(round(self.marine_x.mean())), int(round(self.marine_y.mean()))]
+                return actions.FunctionCall(_LOAD_BUNKER_SCREEN, [_NOT_QUEUED, target])
+        return self.action_re_init_smart_action()
 
     # ACTIONS GROUPES
     # ------------------------------------------------------------------------------------------------------------------
@@ -451,39 +555,19 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         elif self.smart_action == ACTION_BUILD_MISSILE_TURRET:
             return self.action_build_missile_turret()
         else:
-            return self.move_camera_to_base()
+            return self.action_re_init_smart_action()
 
     def actions_build_unit(self):
-        if self.smart_action == ACTION_BUILD_SCV:
-            return self.action_build_scv()
-        elif self.smart_action == ACTION_BUILD_MARINE:
-            return self.action_build_marine()
+        if self.smart_action == ACTION_TRAIN_SCV:
+            return self.action_train_scv()
+        elif self.smart_action == ACTION_TRAIN_MARINE:
+            return self.action_train_marine()
         else:
-            return self.move_camera_to_base()
+            return self.action_re_init_smart_action()
 
-    # ACTIONS SPECIFIQUES
+    # ACTIONS BUILD
     # ------------------------------------------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------------------------------------------
-    def action_re_init_smart_action(self):
-        self.smart_action = None
-        self.init_move_number()
-        return self.move_camera_to_base()
-
-    def action_build_scv(self):
-        self.inc_move_number()
-
-        # Séléction command center
-        if self.move_number == 1:
-            if self.cc_count > 0:
-                target = [int(self.cc_x.mean()), int(self.cc_y.mean())]
-                return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])
-        # Lancement construction du worker
-        elif self.move_number == 2:
-            if _TRAIN_SCV in self.obs.observation["available_actions"]:
-                return actions.FunctionCall(_TRAIN_SCV, [_QUEUED])
-        return self.action_re_init_smart_action()
-
-
     def action_build_supply_depot(self):
         # Construction du supply depot
         if _BUILD_SUPPLY_DEPOT in self.obs.observation['available_actions']:
@@ -496,6 +580,7 @@ class SparseAgentDefensive(base_agent.BaseAgent):
                 )
                 self.supply_depot_y += 2
                 if 0 <= target[0] < 83 and 0 <= target[1] < 83:
+                    self.end_action()
                     return actions.FunctionCall(_BUILD_SUPPLY_DEPOT, [_NOT_QUEUED, target])
         return self.action_re_init_smart_action()
 
@@ -508,15 +593,9 @@ class SparseAgentDefensive(base_agent.BaseAgent):
                 else:
                     target = self.transform_distance(round(self.cc_screen_x.mean()), 15,
                                                      round(self.cc_screen_y.mean()), 12)
+                self.end_action()
                 return actions.FunctionCall(_BUILD_BARRACKS, [_NOT_QUEUED, target])
         return self.action_re_init_smart_action()
-
-    def action_build_marine(self):
-        if self.move_number == 0:
-            self.select_unit("BARRACK")
-        elif self.move_number == 1:
-            if _TRAIN_MARINE in self.obs.observation['available_actions']:
-                return actions.FunctionCall(_TRAIN_MARINE, [_QUEUED])
 
     def action_build_missile_turret(self):
         if _BUILD_MISSILE_TURRET in self.obs.observation['available_actions']:
@@ -527,70 +606,41 @@ class SparseAgentDefensive(base_agent.BaseAgent):
                     round(self.cc_screen_y.mean()),
                     15
                 )
+                self.end_action()
                 return actions.FunctionCall(_BUILD_MISSILE_TURRET, [_NOT_QUEUED, target])
+        return self.action_re_init_smart_action()
 
     def action_build_engineering_bay(self):
         if _BUILD_ENGINEERING_BAY in self.obs.observation['available_actions']:
             if self.cc_screen_y.any():
                 target = self.transform_distance(round(self.cc_screen_x.mean()), -8,
                                                  round(self.cc_screen_y.mean()), 15)
+                self.end_action()
                 return actions.FunctionCall(_BUILD_ENGINEERING_BAY, [_NOT_QUEUED, target])
+        return self.action_re_init_smart_action()
 
-    def action_scv_inactiv_to_mine(self):
-        # step 0
-        if _SELECT_IDLE_WORKER in self.obs.observation['available_actions']:
-            return actions.FunctionCall(_SELECT_IDLE_WORKER, [_NOT_QUEUED])
-        # step 1
-        if _HARVEST_GATHER in self.obs.observation['available_actions']:
-            unit_y, unit_x = (self.unit_type == _NEUTRAL_MINERAL_FIELD).nonzero()
-
-            if unit_y.any():
-                i = random.randint(0, len(unit_y) - 1)
-
-                m_x = unit_x[i]
-                m_y = unit_y[i]
-
-                target = [int(m_x), int(m_y)]
-
-                return actions.FunctionCall(_HARVEST_GATHER, [_QUEUED, target])
-            else:
-                target = [self.cc_minimap_x, self.cc_minimap_y]
-                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, target])
-
-    def action_defend_position(self):
-        # step 0
-        if _MOVE_CAMERA in self.obs.observation["available_actions"]:
-            return actions.FUNCTIONS.move_camera([self.smart_action_x, self.smart_action_y])
-        # step 1
-        self.move_number = 3
-        x = random.randint(0, 83)
-        y = random.randint(0, 83)
-        if 0 <= self.bunker_count < 2 and _BUILD_BUNKER in self.obs.observation['available_actions']:
-            return actions.FunctionCall(_BUILD_BUNKER, [_NOT_QUEUED, [x, y]])
-        elif 0 <= self.missile_turret_count < 2 and _BUILD_MISSILE_TURRET in self.obs.observation['available_actions']:
-            if _BUILD_MISSILE_TURRET in self.obs.observation['available_actions']:
-                return actions.FunctionCall(_BUILD_MISSILE_TURRET, [_NOT_QUEUED, [x, y]])
+    # ACTIONS TRAIN
+    # ------------------------------------------------------------------------------------------------------------------
+    # ------------------------------------------------------------------------------------------------------------------
+    def action_train_scv(self):
+        if self.unit_selected != "COMMANDCENTER":
+            return self.select_unit("COMMANDCENTER")
         else:
-            return self.select_unit("ARMY")
-        # step 2
-        if self.unit_selected == "ARMY":
-            self.move_number = 4
-            self.unit_selected = ""
-            if self.bunker_y.any() and _MOVE_SCREEN in self.obs.observation['available_actions']:
-                i = random.randint(0, len(self.bunker_y) - 1)
-                target = [self.bunker_x[i], self.bunker_y[i]]
-                return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, target])
-            elif _ATTACK_MINIMAP in self.obs.observation['available_actions']:
-                return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [x, y]])
-        # step 3
-        self.select_unit("BUNKER")
-        # step 4
-        if self.unit_selected == "BUNKER":
-            self.unit_selected = ""
-            if _LOAD_BUNKER_SCREEN in self.obs.observation['available_actions'] and self.marine_count > 0:
-                target = [int(round(self.marine_x.mean())), int(round(self.marine_y.mean()))]
-                return actions.FunctionCall(_LOAD_BUNKER_SCREEN, [_NOT_QUEUED, target])
+            # Lancement construction du worker
+            if _TRAIN_SCV in self.obs.observation["available_actions"]:
+                self.end_action()
+                return actions.FunctionCall(_TRAIN_SCV, [_QUEUED])
+        return self.action_re_init_smart_action()
 
+    def action_train_marine(self):
+        if self.unit_selected != "BARRACK":
+            return self.select_unit("BARRACK")
+        else:
+            # Lancement construction du marine
+            if _TRAIN_MARINE in self.obs.observation['available_actions']:
+                self.end_action()
+                return actions.FunctionCall(_TRAIN_MARINE, [_QUEUED])
+        return self.action_re_init_smart_action()
     # ------------------------------------------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------------------------------------------
     # FIN DES ACTIONS
@@ -623,6 +673,7 @@ def save_score(score, steps):
               .format(num_lines, steps, score),
               file=scores_file)
 
+
 def run(agent):
     try:
         while True:
@@ -653,6 +704,7 @@ def run(agent):
                     timesteps = env.step(step_actions)
     except KeyboardInterrupt:
         pass
+
 
 def main():
     agent = SparseAgentDefensive()
