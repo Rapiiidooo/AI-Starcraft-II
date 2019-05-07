@@ -3,8 +3,6 @@
   <component name="ChangeListManager">
     <list default="true" id="dd916463-5c40-4ef3-9377-83fba32d5fe9" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/defensive_agent_data.gz" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/scores.txt" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/sparse_agent_defensive.py" beforeDir="false" afterPath="$PROJECT_DIR$/sparse_agent_defensive.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -14,15 +12,24 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="CoverageDataManager">
-    <SUITE FILE_PATH="coverage/AI_Starcraft_II$sparse_agent_defensive.coverage" NAME="sparse_agent_defensive Coverage Results" MODIFIED="1556488163610" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/AI_Starcraft_II$sparse_agent_defensive.coverage" NAME="sparse_agent_defensive Coverage Results" MODIFIED="1557262389299" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/sparse_agent_defensive.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="499">
-              <caret line="560" column="34" lean-forward="true" selection-start-line="560" selection-start-column="34" selection-end-line="560" selection-end-column="34" />
+            <state relative-caret-position="304">
+              <caret line="368" column="27" selection-start-line="368" selection-start-column="27" selection-end-line="368" selection-end-column="27" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/scores.txt">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="34">
+              <caret line="2" selection-start-line="2" selection-end-line="2" />
             </state>
           </provider>
         </entry>
@@ -33,6 +40,8 @@
     <findStrings>
       <find>No</find>
       <find>if self.previous_action is not None:</find>
+      <find>select_idle_worker</find>
+      <find>IDLEWORKER</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -65,7 +74,7 @@
     </option>
   </component>
   <component name="ProjectFrameBounds" extendedState="6">
-    <option name="x" value="441" />
+    <option name="x" value="479" />
     <option name="y" value="-8" />
     <option name="width" value="991" />
     <option name="height" value="590" />
@@ -167,7 +176,10 @@
       <workItem from="1556320540815" duration="303000" />
       <workItem from="1556371730820" duration="6930000" />
       <workItem from="1556452673852" duration="12192000" />
-      <workItem from="1556485145064" duration="3223000" />
+      <workItem from="1556485145064" duration="3249000" />
+      <workItem from="1556658575944" duration="1257000" />
+      <workItem from="1557174059898" duration="4665000" />
+      <workItem from="1557260660504" duration="1846000" />
     </task>
     <task id="LOCAL-00001" summary="new branch">
       <created>1556049677141</created>
@@ -197,22 +209,30 @@
       <option name="project" value="LOCAL" />
       <updated>1556471666473</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="action attack added">
+      <created>1556488387628</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1556488387628</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="24025000" />
+    <option name="totallyTimeSpent" value="31819000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="-8" y="-8" width="1936" height="1056" extended-state="6" />
+    <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.11673774" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.119936034" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" weight="0.32936078" />
-      <window_info active="true" anchor="bottom" id="Run" order="2" sideWeight="0.49946696" visible="true" weight="0.22318527" />
-      <window_info anchor="bottom" id="Debug" order="3" weight="0.3997833" />
+      <window_info anchor="bottom" id="Run" order="2" sideWeight="0.49946696" weight="0.22318527" />
+      <window_info active="true" anchor="bottom" id="Debug" order="3" visible="true" weight="0.3997833" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" />
@@ -238,18 +258,8 @@
     <MESSAGE value="tmp" />
     <MESSAGE value="idea folder to git ignore" />
     <MESSAGE value="corrections d'oublie et de bug" />
-    <option name="LAST_COMMIT_MESSAGE" value="corrections d'oublie et de bug" />
-  </component>
-  <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/sparse_agent_defensive.py</url>
-          <line>512</line>
-          <option name="timeStamp" value="11" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
+    <MESSAGE value="action attack added" />
+    <option name="LAST_COMMIT_MESSAGE" value="action attack added" />
   </component>
   <component name="editorHistoryManager">
     <entry file="file://$PROJECT_DIR$/.gitignore">
@@ -259,13 +269,45 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$USER_HOME$/AppData/Local/Programs/Python/Python37-32/Lib/site-packages/pysc2/lib/run_parallel.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="168">
+          <caret line="53" selection-start-line="53" selection-end-line="53" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/AppData/Local/Programs/Python/Python37-32/Lib/site-packages/pysc2/env/sc2_env.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="168">
+          <caret line="448" selection-start-line="448" selection-end-line="448" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/AppData/Local/Programs/Python/Python37-32/Lib/site-packages/pysc2/lib/stopwatch.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="168">
+          <caret line="196" selection-start-line="196" selection-end-line="196" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$USER_HOME$/AppData/Local/Programs/Python/Python37-32/Lib/site-packages/pysc2/lib/features.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="372">
+          <caret line="933" selection-start-line="933" selection-end-line="933" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/scores.txt">
-      <provider selected="true" editor-type-id="text-editor" />
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="34">
+          <caret line="2" selection-start-line="2" selection-end-line="2" />
+        </state>
+      </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/sparse_agent_defensive.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="499">
-          <caret line="560" column="34" lean-forward="true" selection-start-line="560" selection-start-column="34" selection-end-line="560" selection-end-column="34" />
+        <state relative-caret-position="304">
+          <caret line="368" column="27" selection-start-line="368" selection-start-column="27" selection-end-line="368" selection-end-column="27" />
         </state>
       </provider>
     </entry>

@@ -360,13 +360,13 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         if self.supply_depot_count == 0 or \
                 self.barracks_count == 0 or \
                 worker_supply == 0 or \
-                army_supply <= 0 or \
+                army_supply <= 2 or \
                 self.engineering_bay_built is False:
             for action in ACTION_ID_DEFEND_POSITION:
                 excluded_actions.append(action)
 
         # Si l'armée est inférieur à 15
-        if army_supply <= 15:
+        if army_supply <= 8:
             excluded_actions.append(ACTION_ID_ATTACK)
 
         return excluded_actions
@@ -406,6 +406,8 @@ class SparseAgentDefensive(base_agent.BaseAgent):
             self.previous_state = self.current_state
             self.previous_action = self.qlearn.choose_action(str(self.current_state), excluded_actions)
             self.smart_action, self.smart_action_x, self.smart_action_y = self.split_action(self.previous_action)
+            print(self.smart_action)
+            print(self.previous_action)
 
         # smart action choisi par le qlearning ?
         if self.smart_action in ACTIONS_BUILD_BUILDING:
@@ -426,7 +428,7 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         # Séléctionner un SCV
         if unit == "SCV":
             unit_y, unit_x = (self.unit_type == _TERRAN_SCV).nonzero()
-            if unit_y.any():
+            if unit_y.any() and _SELECT_POINT in self.obs.observation['available_actions']:
                 i = random.randint(0, len(unit_y) - 1)
                 target = [unit_x[i], unit_y[i]]
                 self.unit_selected = "SCV"
@@ -443,21 +445,21 @@ class SparseAgentDefensive(base_agent.BaseAgent):
                 return actions.FunctionCall(_SELECT_ARMY, [_NOT_QUEUED])
         # Séléctionner un bunker
         elif unit == "BUNKER":
-            if self.bunker_y.any():
+            if self.bunker_y.any() and _SELECT_POINT in self.obs.observation['available_actions']:
                 i = random.randint(0, len(self.bunker_y) - 1)
                 target = [self.bunker_x[i], self.bunker_y[i]]
                 self.unit_selected = "BUNKER"
                 return actions.FunctionCall(_SELECT_POINT, [_SELECT_ALL, target])
         # Séléctionner une caserne
         elif unit == "BARRACK":
-            if self.barracks_y.any():
+            if self.barracks_y.any() and _SELECT_POINT in self.obs.observation['available_actions']:
                 i = random.randint(0, len(self.barracks_y) - 1)
                 target = [self.barracks_x[i], self.barracks_y[i]]
                 self.unit_selected = "BARRACK"
                 return actions.FunctionCall(_SELECT_POINT, [_SELECT_ALL, target])
         # Séléctionner le command center
         elif unit == "COMMANDCENTER":
-            if self.cc_count > 0:
+            if self.cc_count > 0 and _SELECT_POINT in self.obs.observation['available_actions']:
                 target = [int(self.cc_x.mean()), int(self.cc_y.mean())]
                 self.unit_selected = "COMMANDCENTER"
                 return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])
@@ -488,24 +490,23 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         if self.unit_selected != "IDLEWORKER":
             return self.select_unit("IDLEWORKER")
 
-        # Déplacer le worker vers le minerai s'il est disponible à l'écran
-        if _HARVEST_GATHER in self.obs.observation['available_actions']:
-            unit_y, unit_x = (self.unit_type == _NEUTRAL_MINERAL_FIELD).nonzero()
+        if self.move_number == 0:
+            self.inc_move_number()
+            # Déplacer le worker vers le minerai s'il est disponible à l'écran
+            if _HARVEST_GATHER in self.obs.observation['available_actions'] and self.cc_count > 0:
+                unit_y, unit_x = (self.unit_type == _NEUTRAL_MINERAL_FIELD).nonzero()
 
-            if unit_y.any():
-                i = random.randint(0, len(unit_y) - 1)
+                if unit_y.any():
+                    i = random.randint(0, len(unit_y) - 1)
 
-                m_x = unit_x[i]
-                m_y = unit_y[i]
+                    m_x = unit_x[i]
+                    m_y = unit_y[i]
 
-                target = [int(m_x), int(m_y)]
-                self.end_action()
-                return actions.FunctionCall(_HARVEST_GATHER, [_QUEUED, target])
-        # Sinon le déplacer vers la base
-        else:
-            if _MOVE_SCREEN in self.obs.observation['available_actions']:
+                    target = [int(m_x), int(m_y)]
+                    return actions.FunctionCall(_HARVEST_GATHER, [_QUEUED, target])
+            # Sinon le déplacer vers la base
+            elif _MOVE_SCREEN in self.obs.observation['available_actions']:
                 target = [self.cc_minimap_x, self.cc_minimap_y]
-                self.end_action()
                 return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, target])
         return self.action_re_init_smart_action()
 
@@ -529,23 +530,26 @@ class SparseAgentDefensive(base_agent.BaseAgent):
                 if _BUILD_MISSILE_TURRET in self.obs.observation['available_actions']:
                     return actions.FunctionCall(_BUILD_MISSILE_TURRET, [_NOT_QUEUED, [x, y]])
 
-        # Si l'armée n'est pas séléctionnée
-        if self.unit_selected != "ARMY" and self.move_number == 2:
-            return self.select_unit("ARMY")
-        # Si l'armée est séléctionnée
         elif self.move_number == 2:
+            army_supply = self.obs.observation['player'][5]
+            # Si l'armée n'est pas séléctionnée
+            if self.unit_selected != "ARMY" and self.move_number == 2 and army_supply > 0:
+                return self.select_unit("ARMY")
+            # Si l'armée est séléctionnée
             self.inc_move_number()
-            if self.bunker_y.any() and _MOVE_SCREEN in self.obs.observation['available_actions']:
+            if self.bunker_y.any() and \
+                    _MOVE_SCREEN in self.obs.observation['available_actions'] and \
+                    self.unit_selected == "ARMY":
                 i = random.randint(0, len(self.bunker_y) - 1)
                 target = [self.bunker_x[i], self.bunker_y[i]]
                 return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, target])
-            elif _ATTACK_MINIMAP in self.obs.observation['available_actions']:
+            elif _ATTACK_MINIMAP in self.obs.observation['available_actions'] and self.unit_selected == "ARMY":
                 return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [self.smart_action_x, self.smart_action_y]])
 
-        # Séléctionner le bunker pour y faire rentrer un marine
-        if self.unit_selected != "BUNKER" and self.move_number == 3 and self.bunker_y.any():
-            return self.select_unit("BUNKER")
         elif self.move_number == 3:
+            # Séléctionner le bunker pour y faire rentrer un marine
+            if self.unit_selected != "BUNKER" and self.move_number == 3 and self.bunker_y.any():
+                return self.select_unit("BUNKER")
             self.inc_move_number()
             if _LOAD_BUNKER_SCREEN in self.obs.observation['available_actions'] and self.marine_count > 0:
                 target = [int(round(self.marine_x.mean())), int(round(self.marine_y.mean()))]
@@ -726,6 +730,7 @@ def run(agent):
                     step_actions = [agent.step(timesteps[0])]
                     if timesteps[0].last():
                         break
+                    print(step_actions)
                     timesteps = env.step(step_actions)
     except KeyboardInterrupt:
         pass
