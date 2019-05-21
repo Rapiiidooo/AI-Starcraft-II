@@ -40,6 +40,7 @@ _SELECT_IDLE_WORKER = actions.FUNCTIONS.select_idle_worker.id
 _SELECT_POINT = actions.FUNCTIONS.select_point.id
 
 _BUILD_SUPPLY_DEPOT = actions.FUNCTIONS.Build_SupplyDepot_screen.id
+_BUILD_REFINERY = actions.FUNCTIONS.Build_Refinery_screen.id
 _BUILD_BARRACKS = actions.FUNCTIONS.Build_Barracks_screen.id
 _BUILD_MISSILE_TURRET = actions.FUNCTIONS.Build_MissileTurret_screen.id
 _BUILD_ENGINEERING_BAY = actions.FUNCTIONS.Build_EngineeringBay_screen.id
@@ -54,6 +55,7 @@ _HARVEST_GATHER = actions.FUNCTIONS.Harvest_Gather_screen.id
 
 _TERRAN_COMMANDCENTER = 18
 _TERRAN_SUPPLY_DEPOT = 19
+_TERRAN_REFINERY = 20
 _TERRAN_BARRACKS = 21
 _TERRAN_ENGINEERING_BAY = 22
 _TERRAN_MISSILE_TURRET = 23
@@ -62,23 +64,13 @@ _TERRAN_SCV = 45
 _TERRAN_MARINE = 48
 
 _NEUTRAL_MINERAL_FIELD = 341
+_NEUTRAL_VESPENE_GEYSER = 342
 
 _NOT_QUEUED = [0]
 _QUEUED = [1]
 _SELECT_ALL = [2]
 
 DATA_FILE = 'defensive_agent_data'
-
-ACTION_ID_DO_NOTHING = 0
-ACTION_ID_BUILD_SCV = 1
-ACTION_ID_BUILD_SUPPLY_DEPOT = 2
-ACTION_ID_BUILD_BARRACKS = 3
-ACTION_ID_BUILD_MARINE = 4
-ACTION_ID_BUILD_MISSILE_TURRET = 5
-ACTION_ID_BUILD_ENGINEERING_BAY = 6
-ACTION_ID_ATTACK = 7
-ACTION_ID_SCV_INACTIV_TO_MINE = 8  # must be the last one before ACTION_ID_DEFEND_POSITION
-ACTION_ID_DEFEND_POSITION = []
 
 ACTION_DO_NOTHING = 'donothing'
 ACTION_TRAIN_SCV = 'trainscv'
@@ -87,15 +79,46 @@ ACTION_BUILD_SUPPLY_DEPOT = 'buildsupplydepot'
 ACTION_BUILD_BARRACKS = 'buildbarracks'
 ACTION_BUILD_MISSILE_TURRET = 'buildmissileturret'
 ACTION_BUILD_ENGINEERING_BAY = 'buildengineeringbay'
+ACTION_BUILD_REFINERY = 'buildrefinery'
 ACTION_ATTACK = 'attack'
 ACTION_SCV_INACTIV_TO_MINE = 'reactiveworker'
 ACTION_DEFEND_POSITION = 'defend'
+ACTION_ECONOMISE = 'economise'
+
+# The order of ACTION ID AND IN SMART ACTION ARE VERY IMPORTANT
+ACTION_ID_DO_NOTHING = 0
+ACTION_ID_TRAIN_SCV = 1
+ACTION_ID_TRAIN_MARINE = 2
+ACTION_ID_BUILD_SUPPLY_DEPOT = 3
+ACTION_ID_BUILD_BARRACKS = 4
+ACTION_ID_BUILD_MISSILE_TURRET = 5
+ACTION_ID_BUILD_ENGINEERING_BAY = 6
+ACTION_ID_BUILD_REFINERY = 7
+ACTION_ID_ATTACK = 8
+ACTION_ID_ECONOMISE = 9
+ACTION_ID_SCV_INACTIV_TO_MINE = 10
+ACTION_ID_DEFEND_POSITION = []
+
+SMART_ACTIONS = [
+    ACTION_DO_NOTHING,
+    ACTION_TRAIN_SCV,
+    ACTION_TRAIN_MARINE,
+    ACTION_BUILD_SUPPLY_DEPOT,
+    ACTION_BUILD_BARRACKS,
+    ACTION_BUILD_MISSILE_TURRET,
+    ACTION_BUILD_ENGINEERING_BAY,
+    ACTION_BUILD_REFINERY,
+    ACTION_ATTACK,
+    ACTION_ECONOMISE,
+    ACTION_SCV_INACTIV_TO_MINE,
+]
 
 ACTIONS_BUILD_BUILDING = [
     ACTION_BUILD_SUPPLY_DEPOT,
     ACTION_BUILD_BARRACKS,
     ACTION_BUILD_MISSILE_TURRET,
-    ACTION_BUILD_ENGINEERING_BAY
+    ACTION_BUILD_ENGINEERING_BAY,
+    ACTION_BUILD_REFINERY
 ]
 
 ACTIONS_TRAIN_UNIT = [
@@ -103,17 +126,6 @@ ACTIONS_TRAIN_UNIT = [
     ACTION_TRAIN_MARINE
 ]
 
-SMART_ACTIONS = [
-    ACTION_DO_NOTHING,
-    ACTION_TRAIN_SCV,
-    ACTION_BUILD_SUPPLY_DEPOT,
-    ACTION_BUILD_BARRACKS,
-    ACTION_TRAIN_MARINE,
-    ACTION_BUILD_MISSILE_TURRET,
-    ACTION_BUILD_ENGINEERING_BAY,
-    ACTION_ATTACK,
-    ACTION_SCV_INACTIV_TO_MINE
-]
 # attack haut gauche x_18 y_24
 MAP_ROUTE = [
     [36, 20],
@@ -168,9 +180,18 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         self.bunker_y = None
         self.bunker_x = None
         self.bunker_count = None
+        self.vespene_y = None
+        self.vespene_x = None
+        self.vespene_geyser_count = None
+        self.refinery_y = None
+        self.refinery_x = None
+        self.refinery_count = None
         self.engineering_bay_y = None
         self.engineering_bay_x = None
         self.engineering_bay_built = None
+        self.mineral_restant = -1
+        self.mineral_x = None
+        self.mineral_y = None
         # Info actions
         self.smart_action = None
         self.smart_action_x = None
@@ -182,6 +203,8 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         self.obs = None
         self.unit_type = None
         self.current_state = np.zeros(12)
+        self.mining_owned = None
+        self.vespene_owned = None
 
         # Variable pour tester la position à la main
         self.testx = 0
@@ -250,6 +273,11 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         self.cc_y, self.cc_x = (self.unit_type == _TERRAN_COMMANDCENTER).nonzero()
         self.cc_count = 1 if self.cc_y.any() else 0
 
+        # NB de mineral restant seulement autour de la base principale
+        if self.cc_count >= 1:
+            self.mineral_y, self.mineral_x = (self.unit_type == _NEUTRAL_MINERAL_FIELD).nonzero()
+            self.mineral_restant = int(round(len(self.mineral_y)))
+
         # NB de MARINE
         self.marine_y, self.marine_x = (self.unit_type == _TERRAN_MARINE).nonzero()
         self.marine_count = int(round(len(self.marine_y) / 9))
@@ -274,9 +302,21 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         self.bunker_y, self.bunker_x = (self.unit_type == _TERRAN_BUNKER).nonzero()
         self.bunker_count = int(round(len(self.bunker_y) / 12))
 
+        # VESPENE présent
+        self.vespene_y, self.vespene_x = (self.unit_type == _NEUTRAL_VESPENE_GEYSER).nonzero()
+        self.vespene_geyser_count = int(math.ceil(len(self.vespene_y) / 97))
+
+        # NB de RAFINERIE
+        self.refinery_y, self.refinery_x = (self.unit_type == _TERRAN_REFINERY).nonzero()
+        self.refinery_count = int(round(len(self.refinery_y) / 12))
+
         # NB de centre d'usine (pour débloquer la construction des bunkers
         self.engineering_bay_y, self.engineering_bay_x = (self.unit_type == _TERRAN_ENGINEERING_BAY).nonzero()
         self.engineering_bay_built = True if self.engineering_bay_y.any() else False
+
+        # 'ARGENT' ACTUEL
+        self.mining_owned = obs.observation['player'][1]
+        self.vespene_owned = obs.observation['player'][2]
 
         self.current_state = np.zeros(12)
         self.current_state[0] = self.cc_count
@@ -320,20 +360,24 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         inactiv_worker = obs.observation['player'][7]
 
         # Si pas de centre de command disponible ou le nombre de SCV >= 15 (à l'écran) ou nb total de worker > 20
-        if self.cc_count == 0 or self.scv_count >= 15 or worker_supply > 20:
-            excluded_actions.append(ACTION_ID_BUILD_SCV)
+        if self.cc_count == 0 or self.scv_count >= 15 or worker_supply > 20 or self.mining_owned < 50:
+            excluded_actions.append(ACTION_ID_TRAIN_SCV)
 
         # Si nb de supply depot >= 6 ou pas de worker ou place disponible > 4
-        if self.supply_depot_count >= 6 or worker_supply == 0 or supply_free > 4:
+        if self.supply_depot_count >= 6 or worker_supply == 0 or supply_free > 4 or self.mining_owned < 100:
             excluded_actions.append(ACTION_ID_BUILD_SUPPLY_DEPOT)
 
         # Si pas de supply depot ou nb de barrack >= 2 ou pas de worker
-        if self.supply_depot_count == 0 or self.barracks_count >= 2 or worker_supply == 0:
+        if self.supply_depot_count == 0 or self.barracks_count >= 2 or worker_supply == 0 or self.mining_owned < 150:
             excluded_actions.append(ACTION_ID_BUILD_BARRACKS)
 
         # Si pas de place ou pas de barrack
-        if supply_free == 0 or self.barracks_count == 0:
-            excluded_actions.append(ACTION_ID_BUILD_MARINE)
+        if supply_free == 0 or self.barracks_count == 0 or self.mining_owned < 50:
+            excluded_actions.append(ACTION_ID_TRAIN_MARINE)
+
+        # Si pas de worker dispo ou déjà 2 rafinery ou TODO il faudrait vérifier que les deux minerais sont bien présent
+        if worker_supply == 0 or self.refinery_count >= 2 or self.mining_owned < 75:
+            excluded_actions.append(ACTION_ID_BUILD_REFINERY)
 
         # Si pas de worker inactif
         if inactiv_worker <= 0:
@@ -344,7 +388,8 @@ class SparseAgentDefensive(base_agent.BaseAgent):
                 self.supply_depot_count == 0 or \
                 self.barracks_count == 0 or \
                 worker_supply == 0 or \
-                self.engineering_bay_built is True:
+                self.engineering_bay_built is True or \
+                self.mining_owned < 125:
             excluded_actions.append(ACTION_ID_BUILD_ENGINEERING_BAY)
 
         # Si pas de supply ou pas de barrack ou pas de worker ou tourelle missile construite ou usine pas construite
@@ -353,7 +398,8 @@ class SparseAgentDefensive(base_agent.BaseAgent):
                 self.barracks_count == 0 or \
                 worker_supply == 0 or \
                 self.missile_turret_count > 0 is True or \
-                self.engineering_bay_built is False:
+                self.engineering_bay_built is False or \
+                self.mining_owned < 100:
             excluded_actions.append(ACTION_ID_BUILD_MISSILE_TURRET)
 
         # Si pas de supply ou pas de barrack ou pas de worker ou pas d'armée ou usine pas construite
@@ -361,11 +407,12 @@ class SparseAgentDefensive(base_agent.BaseAgent):
                 self.barracks_count == 0 or \
                 worker_supply == 0 or \
                 army_supply <= 2 or \
-                self.engineering_bay_built is False:
+                self.engineering_bay_built is False or \
+                self.mining_owned < 200:
             for action in ACTION_ID_DEFEND_POSITION:
                 excluded_actions.append(action)
 
-        # Si l'armée est inférieur à 15
+        # Si l'armée est inférieur à 8
         if army_supply <= 8:
             excluded_actions.append(ACTION_ID_ATTACK)
 
@@ -422,6 +469,8 @@ class SparseAgentDefensive(base_agent.BaseAgent):
             return self.action_attack()
         elif self.smart_action == ACTION_DO_NOTHING:
             return self.action_do_nothing()
+        elif self.smart_action == ACTION_ECONOMISE:
+            return self.action_economise()
         return self.move_camera_to_base()
 
     def select_unit(self, unit):
@@ -486,6 +535,12 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         self.end_action()
         return actions.FunctionCall(_NO_OP, [])
 
+    def action_economise(self):
+        if self.mining_owned < 200 and self.mineral_restant > 0:
+            return actions.FunctionCall(_NO_OP, [])
+        else:
+            return self.action_do_nothing()
+
     def action_scv_inactiv_to_mine(self):
         if self.unit_selected != "IDLEWORKER":
             return self.select_unit("IDLEWORKER")
@@ -526,9 +581,10 @@ class SparseAgentDefensive(base_agent.BaseAgent):
             y = random.randint(0, 83)
             if 0 <= self.bunker_count < 2 and _BUILD_BUNKER in self.obs.observation['available_actions']:
                 return actions.FunctionCall(_BUILD_BUNKER, [_NOT_QUEUED, [x, y]])
-            elif 0 <= self.missile_turret_count < 2 and _BUILD_MISSILE_TURRET in self.obs.observation['available_actions']:
-                if _BUILD_MISSILE_TURRET in self.obs.observation['available_actions']:
-                    return actions.FunctionCall(_BUILD_MISSILE_TURRET, [_NOT_QUEUED, [x, y]])
+            elif \
+                    0 <= self.missile_turret_count < 2 and \
+                    _BUILD_MISSILE_TURRET in self.obs.observation['available_actions']:
+                return actions.FunctionCall(_BUILD_MISSILE_TURRET, [_NOT_QUEUED, [x, y]])
 
         elif self.move_number == 2:
             army_supply = self.obs.observation['player'][5]
@@ -581,6 +637,8 @@ class SparseAgentDefensive(base_agent.BaseAgent):
             return self.action_build_barracks()
         elif self.smart_action == ACTION_BUILD_ENGINEERING_BAY:
             return self.action_build_engineering_bay()
+        elif self.smart_action == ACTION_BUILD_REFINERY:
+            return self.action_build_refinery()
         elif self.smart_action == ACTION_BUILD_MISSILE_TURRET:
             return self.action_build_missile_turret()
         else:
@@ -646,6 +704,14 @@ class SparseAgentDefensive(base_agent.BaseAgent):
                                                  round(self.cc_screen_y.mean()), 15)
                 self.end_action()
                 return actions.FunctionCall(_BUILD_ENGINEERING_BAY, [_NOT_QUEUED, target])
+        return self.action_re_init_smart_action()
+
+    def action_build_refinery(self):
+        if _BUILD_REFINERY in self.obs.observation['available_actions']:
+            if self.refinery_count <= 1:
+                target = [round(self.vespene_x.mean()), round(self.vespene_y.mean())]
+                self.end_action()
+                return actions.FunctionCall(_BUILD_REFINERY, [_NOT_QUEUED, target])
         return self.action_re_init_smart_action()
 
     # ACTIONS TRAIN
