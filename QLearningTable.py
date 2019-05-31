@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 
+
 # QLearningTable Stolen from https://github.com/MorvanZhou/Reinforcement-learning-with-tensorflow
 class QLearningTable:
     def __init__(self, actions, learning_rate=0.01, reward_decay=0.9, e_greedy=0.9):

@@ -4,6 +4,8 @@ import random
 import sys
 import time
 
+from sklearn.cluster import KMeans
+
 from QLearningTable import QLearningTable
 import numpy as np
 import pandas as pd
@@ -31,9 +33,14 @@ _MOVE_CAMERA = 1
 _PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
 _UNIT_TYPE = features.SCREEN_FEATURES.unit_type.index
 _PLAYER_ID = features.SCREEN_FEATURES.player_id.index
+_PLAYER_ENEMY = features.PlayerRelative.ENEMY
 _PLAYER_SELF = 1
 _PLAYER_HOSTILE = 4
 _ARMY_SUPPLY = 5
+
+_EFFECT_REPAIR_SCV_AUTOCAST = actions.FUNCTIONS.Effect_Repair_SCV_autocast.id
+_MORPH_SUPPLYDEPOT_LOWER_QUICK = actions.FUNCTIONS.Morph_SupplyDepot_Lower_quick.id
+_MORPH_SUPPLYDEPOT_RAISE_QUICK = actions.FUNCTIONS.Morph_SupplyDepot_Raise_quick.id
 
 _SELECT_ARMY = actions.FUNCTIONS.select_army.id
 _SELECT_IDLE_WORKER = actions.FUNCTIONS.select_idle_worker.id
@@ -44,14 +51,21 @@ _BUILD_REFINERY = actions.FUNCTIONS.Build_Refinery_screen.id
 _BUILD_BARRACKS = actions.FUNCTIONS.Build_Barracks_screen.id
 _BUILD_MISSILE_TURRET = actions.FUNCTIONS.Build_MissileTurret_screen.id
 _BUILD_ENGINEERING_BAY = actions.FUNCTIONS.Build_EngineeringBay_screen.id
+_BUILD_FACTORY = actions.FUNCTIONS.Build_Factory_screen.id
+_BUILD_STARPORT = actions.FUNCTIONS.Build_Starport_screen.id
+_BUILD_TECHLAB_STARPORT = actions.FUNCTIONS.Build_TechLab_Starport_quick.id
+_BUILD_FUSION_CORE = actions.FUNCTIONS.Build_FusionCore_screen.id
 _BUILD_BUNKER = actions.FUNCTIONS.Build_Bunker_screen.id
 _LOAD_BUNKER_SCREEN = actions.FUNCTIONS.Load_Bunker_screen.id
 
 _TRAIN_MARINE = actions.FUNCTIONS.Train_Marine_quick.id
 _TRAIN_SCV = actions.FUNCTIONS.Train_SCV_quick.id
+_TRAIN_BATTLE_CRUISER = actions.FUNCTIONS.Train_Battlecruiser_quick.id
 
+_RALLY_UNITS_MINIMAP = actions.FUNCTIONS.Rally_Units_minimap.id
 _ATTACK_MINIMAP = actions.FUNCTIONS.Attack_minimap.id
-_HARVEST_GATHER = actions.FUNCTIONS.Harvest_Gather_screen.id
+_ATTACK_SCREEN = actions.FUNCTIONS.Attack_Attack_screen.id
+_HARVEST_GATHER = actions.FUNCTIONS.Harvest_Gather_SCV_screen.id
 
 _TERRAN_COMMANDCENTER = 18
 _TERRAN_SUPPLY_DEPOT = 19
@@ -60,8 +74,13 @@ _TERRAN_BARRACKS = 21
 _TERRAN_ENGINEERING_BAY = 22
 _TERRAN_MISSILE_TURRET = 23
 _TERRAN_BUNKER = 24
+_TERRAN_FACTORY = 27
+_TERRAN_STARPORT = 28
+_TERRAN_FUSION_CORE = 30
+_TERRAN_STARPORT_TECHLAB = 41
 _TERRAN_SCV = 45
 _TERRAN_MARINE = 48
+_TERRAN_BATTLE_CRUISER = 57
 
 _NEUTRAL_MINERAL_FIELD = 341
 _NEUTRAL_VESPENE_GEYSER = 342
@@ -75,42 +94,70 @@ DATA_FILE = 'defensive_agent_data'
 ACTION_DO_NOTHING = 'donothing'
 ACTION_TRAIN_SCV = 'trainscv'
 ACTION_TRAIN_MARINE = 'trainmarine'
+ACTION_TRAIN_BATTLE_CRUISER = 'trainbattlecruiser'
 ACTION_BUILD_SUPPLY_DEPOT = 'buildsupplydepot'
 ACTION_BUILD_BARRACKS = 'buildbarracks'
 ACTION_BUILD_MISSILE_TURRET = 'buildmissileturret'
 ACTION_BUILD_ENGINEERING_BAY = 'buildengineeringbay'
 ACTION_BUILD_REFINERY = 'buildrefinery'
-ACTION_ATTACK = 'attack'
+ACTION_BUILD_FACTORY = 'buildfactory'
+ACTION_BUILD_STARPORT = 'buildstarpor'
+ACTION_BUILD_FUSION_CORE = 'buildfusioncore'
+ACTION_UPGRADE_STARPORT_TECHLAB = 'upgradestarportechlab'
+ACTION_ECONOMISE = 'economise'
+ACTION_SCV_TO_VESPENE = 'workertovespene'
 ACTION_SCV_INACTIV_TO_MINE = 'reactiveworker'
 ACTION_DEFEND_POSITION = 'defend'
-ACTION_ECONOMISE = 'economise'
+ACTION_DEFEND_VS_ENEMY = 'defendvsenemy'
+ACTION_ATTACK_1 = 'attack1'  # correspond à la base principale
+ACTION_ATTACK_2 = 'attack2'  # correspond au minerai proche de la base principale
+ACTION_SUPPLY_DEPOT_RAISE_QUICK = 'supplyraiseup'
 
 # The order of ACTION ID AND IN SMART ACTION ARE VERY IMPORTANT
 ACTION_ID_DO_NOTHING = 0
 ACTION_ID_TRAIN_SCV = 1
 ACTION_ID_TRAIN_MARINE = 2
-ACTION_ID_BUILD_SUPPLY_DEPOT = 3
-ACTION_ID_BUILD_BARRACKS = 4
-ACTION_ID_BUILD_MISSILE_TURRET = 5
-ACTION_ID_BUILD_ENGINEERING_BAY = 6
-ACTION_ID_BUILD_REFINERY = 7
-ACTION_ID_ATTACK = 8
-ACTION_ID_ECONOMISE = 9
-ACTION_ID_SCV_INACTIV_TO_MINE = 10
-ACTION_ID_DEFEND_POSITION = []
+ACTION_ID_TRAIN_BATTLE_CRUISER = 3
+ACTION_ID_BUILD_SUPPLY_DEPOT = 4
+ACTION_ID_BUILD_BARRACKS = 5
+ACTION_ID_BUILD_MISSILE_TURRET = 6
+ACTION_ID_BUILD_ENGINEERING_BAY = 7
+ACTION_ID_BUILD_REFINERY = 8
+ACTION_ID_BUILD_FACTORY = 9
+ACTION_ID_BUILD_STARPORT = 10
+ACTION_ID_BUILD_FUSION_CORE = 11
+ACTION_ID_UPGRADE_STARPORT_TECHLAB = 12
+ACTION_ID_ECONOMISE = 13
+ACTION_ID_SCV_TO_VESPENE = 14
+ACTION_ID_SCV_INACTIV_TO_MINE = 15
+ACTION_ID_DEFEND_POSITION = 16
+ACTION_ID_DEFEND_VS_ENEMY = 17
+ACTION_ID_ATTACK_1 = 18
+ACTION_ID_ATTACK_2 = 19
+ACTION_ID_SUPPLY_DEPOT_RAISE_QUICK = 20
 
 SMART_ACTIONS = [
     ACTION_DO_NOTHING,
     ACTION_TRAIN_SCV,
     ACTION_TRAIN_MARINE,
+    ACTION_TRAIN_BATTLE_CRUISER,
     ACTION_BUILD_SUPPLY_DEPOT,
     ACTION_BUILD_BARRACKS,
     ACTION_BUILD_MISSILE_TURRET,
     ACTION_BUILD_ENGINEERING_BAY,
     ACTION_BUILD_REFINERY,
-    ACTION_ATTACK,
+    ACTION_BUILD_FACTORY,
+    ACTION_BUILD_STARPORT,
+    ACTION_BUILD_FUSION_CORE,
+    ACTION_UPGRADE_STARPORT_TECHLAB,
     ACTION_ECONOMISE,
+    ACTION_SCV_TO_VESPENE,
     ACTION_SCV_INACTIV_TO_MINE,
+    ACTION_DEFEND_POSITION,
+    ACTION_DEFEND_VS_ENEMY,
+    ACTION_ATTACK_1,
+    ACTION_ATTACK_2,
+    ACTION_SUPPLY_DEPOT_RAISE_QUICK
 ]
 
 ACTIONS_BUILD_BUILDING = [
@@ -118,26 +165,18 @@ ACTIONS_BUILD_BUILDING = [
     ACTION_BUILD_BARRACKS,
     ACTION_BUILD_MISSILE_TURRET,
     ACTION_BUILD_ENGINEERING_BAY,
-    ACTION_BUILD_REFINERY
+    ACTION_BUILD_REFINERY,
+    ACTION_BUILD_FACTORY,
+    ACTION_BUILD_STARPORT,
+    ACTION_BUILD_FUSION_CORE,
+    ACTION_UPGRADE_STARPORT_TECHLAB
 ]
 
 ACTIONS_TRAIN_UNIT = [
     ACTION_TRAIN_SCV,
-    ACTION_TRAIN_MARINE
+    ACTION_TRAIN_MARINE,
+    ACTION_TRAIN_BATTLE_CRUISER
 ]
-
-# attack haut gauche x_18 y_24
-MAP_ROUTE = [
-    [36, 20],
-    [38, 32],
-    [22, 40],
-    [20, 50]
-]
-
-for index, route in enumerate(MAP_ROUTE):
-    routex, routey = route
-    SMART_ACTIONS.append(ACTION_DEFEND_POSITION + '_' + str(routex) + '_' + str(routey))
-    ACTION_ID_DEFEND_POSITION.append(ACTION_ID_SCV_INACTIV_TO_MINE + index + 1)
 
 # endregion
 
@@ -183,6 +222,7 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         self.vespene_y = None
         self.vespene_x = None
         self.vespene_geyser_count = None
+        self.vespene_center = None
         self.refinery_y = None
         self.refinery_x = None
         self.refinery_count = None
@@ -192,6 +232,29 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         self.mineral_restant = -1
         self.mineral_x = None
         self.mineral_y = None
+        self.scv_in_vespene1 = 0
+        self.scv_in_vespene2 = 0
+        self.vespene_step_acc = 0
+        self.vespene_owned_prev = 0
+        self.factory_count = None
+        self.factory_x = None
+        self.factory_y = None
+        self.starport_count = None
+        self.starport_x = None
+        self.starport_y = None
+        self.starport_techlab_count = None
+        self.starport_techlab_x = None
+        self.starport_techlab_y = None
+        self.fusion_core_count = None
+        self.fusion_core_x = None
+        self.fusion_core_y = None
+        self.rally_unit_starport = False
+        self.rally_unit_barracks = False
+        self.target_rally_unit_minimap = None
+        self.battle_cruiser_built = 0
+        self.exclude_build_supply_depot = False
+        self.anti_zerg_rush_wall = False
+        self.supply_downed = False
         # Info actions
         self.smart_action = None
         self.smart_action_x = None
@@ -201,10 +264,12 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         self.move_number = 0
         # Info general
         self.obs = None
+        self.player_relative = None
         self.unit_type = None
-        self.current_state = np.zeros(12)
+        self.current_state = np.zeros(20)
         self.mining_owned = None
         self.vespene_owned = None
+        self.target_enemis = None
 
         # Variable pour tester la position à la main
         self.testx = 0
@@ -224,9 +289,21 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         if self.base_top_left == 1:
             self.cc_minimap_x = 18
             self.cc_minimap_y = 24
+            self.target_rally_unit_minimap = [27, 22]
         else:
             self.cc_minimap_x = 40
             self.cc_minimap_y = 47
+            self.target_rally_unit_minimap = [30, 45]
+
+        # VESPENE présent
+        self.vespene_y, self.vespene_x = (self.unit_type == _NEUTRAL_VESPENE_GEYSER).nonzero()
+        self.vespene_geyser_count = int(math.ceil(len(self.vespene_y) / 97))
+        units = []
+        for i in range(0, len(self.vespene_y)):
+            units.append((self.vespene_x[i], self.vespene_y[i]))
+        kmeans = KMeans(n_clusters=self.vespene_geyser_count)
+        kmeans.fit(units)
+        self.vespene_center = kmeans.cluster_centers_
 
     def transform_distance(self, x, x_distance, y, y_distance):
         if not self.base_top_left:
@@ -241,21 +318,23 @@ class SparseAgentDefensive(base_agent.BaseAgent):
     @staticmethod
     def split_action(action_id):
         smart_action = SMART_ACTIONS[action_id]
-
         x = 0
         y = 0
         if '_' in smart_action:
             smart_action, x, y = smart_action.split('_')
-
         return smart_action, int(x), int(y)
+
+    @staticmethod
+    def _xy_locs(mask):
+        """Mask should be a set of bools from comparison with a feature layer.
+        Function from https://github.com/deepmind/pysc2/blob/master/pysc2/agents/scripted_agent.py
+        """
+        y, x = mask.nonzero()
+        return list(zip(x, y))
 
     def ending_game(self, obs):
         # reward = obs.reward
-        score = obs.observation["score_cumulative"]["score"]
-        reward = 1 if self.steps > _STEPS_BEFORE_WIN or score > 2000 else -1
-
-        if obs.reward > 0:
-            reward = 10
+        reward = obs.reward
 
         self.qlearn.learn(str(self.previous_state), self.previous_action, reward, 'terminal')
         self.qlearn.q_table.to_pickle(DATA_FILE + '.gz', 'gzip')
@@ -264,7 +343,7 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         self.previous_state = None
         self.move_number = 0
 
-        save_score(obs.observation["score_cumulative"]["score"], self.steps)
+        save_score(obs.observation["score_cumulative"]["score"], self.steps, reward)
         return actions.FunctionCall(_NO_OP, [])
 
     def init_current_state(self, obs):
@@ -277,6 +356,10 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         if self.cc_count >= 1:
             self.mineral_y, self.mineral_x = (self.unit_type == _NEUTRAL_MINERAL_FIELD).nonzero()
             self.mineral_restant = int(round(len(self.mineral_y)))
+
+        # NB de vespene geyser restant
+        self.vespene_y, self.vespene_x = (self.unit_type == _NEUTRAL_VESPENE_GEYSER).nonzero()
+        self.vespene_geyser_count = int(math.ceil(len(self.vespene_y) / 97))
 
         # NB de MARINE
         self.marine_y, self.marine_x = (self.unit_type == _TERRAN_MARINE).nonzero()
@@ -302,13 +385,25 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         self.bunker_y, self.bunker_x = (self.unit_type == _TERRAN_BUNKER).nonzero()
         self.bunker_count = int(round(len(self.bunker_y) / 12))
 
-        # VESPENE présent
-        self.vespene_y, self.vespene_x = (self.unit_type == _NEUTRAL_VESPENE_GEYSER).nonzero()
-        self.vespene_geyser_count = int(math.ceil(len(self.vespene_y) / 97))
-
         # NB de RAFINERIE
         self.refinery_y, self.refinery_x = (self.unit_type == _TERRAN_REFINERY).nonzero()
-        self.refinery_count = int(round(len(self.refinery_y) / 12))
+        self.refinery_count = int(round(len(self.refinery_y) / 97))
+
+        # NB d'USINE
+        self.factory_y, self.factory_x = (self.unit_type == _TERRAN_FACTORY).nonzero()
+        self.factory_count = int(round(len(self.factory_y) / 97))
+
+        # NB de STARPORT
+        self.starport_y, self.starport_x = (self.unit_type == _TERRAN_STARPORT).nonzero()
+        self.starport_count = int(round(len(self.starport_y) / 97))
+
+        # NB de NOYAU DE FUSION
+        self.fusion_core_y, self.fusion_core_x = (self.unit_type == _TERRAN_FUSION_CORE).nonzero()
+        self.fusion_core_count = int(round(len(self.fusion_core_y) / 97))
+
+        # NB de STARPORT AMELIORE
+        self.starport_techlab_y, self.starport_techlab_x = (self.unit_type == _TERRAN_STARPORT_TECHLAB).nonzero()
+        self.starport_techlab_count = int(round(len(self.starport_techlab_y) / 97))
 
         # NB de centre d'usine (pour débloquer la construction des bunkers
         self.engineering_bay_y, self.engineering_bay_x = (self.unit_type == _TERRAN_ENGINEERING_BAY).nonzero()
@@ -317,12 +412,42 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         # 'ARGENT' ACTUEL
         self.mining_owned = obs.observation['player'][1]
         self.vespene_owned = obs.observation['player'][2]
+        self.vespene_step_acc += 1
+        # Si ya plus de 80 step et que des ouvriers sont rescencé
+        if self.vespene_step_acc > 80 and self.scv_in_vespene1 + self.scv_in_vespene2 > 2:
+            # si le vespene précèdent = 0 c'est l'init ...
+            if self.vespene_owned_prev == 0:
+                self.vespene_owned_prev = self.vespene_owned
+            # si vespene prev == actuel depuis 80 step = surement plus de worker dessus
+            elif self.vespene_owned_prev == self.vespene_owned:
+                self.scv_in_vespene1 = 0
+                self.scv_in_vespene2 = 0
+            # surement batiment construit
+            elif self.vespene_owned_prev > self.vespene_owned:
+                self.vespene_owned_prev = self.vespene_owned
+            # le vespene n'a pas augmenté beaucoup
+            elif (self.vespene_owned - self.vespene_owned_prev) <= 40:
+                self.scv_in_vespene1 = 1
+                self.scv_in_vespene2 = 1
+            # sinon attribuer la valeur actuel en mémoire
+            else:
+                self.vespene_owned_prev = self.vespene_owned
+            self.vespene_step_acc = 0
 
-        self.current_state = np.zeros(12)
+        self.current_state = np.zeros(20)
         self.current_state[0] = self.cc_count
         self.current_state[1] = self.supply_depot_count
         self.current_state[2] = self.barracks_count
-        self.current_state[3] = obs.observation['player'][_ARMY_SUPPLY]
+        self.current_state[3] = self.starport_count
+        self.current_state[4] = self.starport_techlab_count
+        self.current_state[5] = self.fusion_core_count
+        self.current_state[6] = self.factory_count
+        self.current_state[7] = self.refinery_count
+        self.current_state[8] = self.vespene_geyser_count
+        self.current_state[9] = self.scv_count
+        self.current_state[10] = self.battle_cruiser_built
+        self.current_state[11] = obs.observation['player'][_ARMY_SUPPLY]
+        self.current_state[12] = obs.observation["score_cumulative"]["score"]
 
         hot_squares = np.zeros(4)
         enemy_y, enemy_x = (obs.observation['feature_minimap'][_PLAYER_RELATIVE] == _PLAYER_HOSTILE).nonzero()
@@ -335,7 +460,7 @@ class SparseAgentDefensive(base_agent.BaseAgent):
             hot_squares = hot_squares[::-1]
 
         for i in range(0, 4):
-            self.current_state[i + 4] = hot_squares[i]
+            self.current_state[i + 12] = hot_squares[i]
 
         green_squares = np.zeros(4)
         friendly_y, friendly_x = (obs.observation['feature_minimap'][_PLAYER_RELATIVE] == _PLAYER_SELF).nonzero()
@@ -348,7 +473,16 @@ class SparseAgentDefensive(base_agent.BaseAgent):
             green_squares = green_squares[::-1]
 
         for i in range(0, 4):
-            self.current_state[i + 8] = green_squares[i]
+            self.current_state[i + 16] = green_squares[i]
+
+        # Détéction d'ennemis à l'écran
+        self.player_relative = self.obs.observation.feature_screen.player_relative
+        enemies = self._xy_locs(self.player_relative == _PLAYER_ENEMY)
+        if enemies:
+            # noinspection PyTypeChecker
+            self.target_enemis = enemies[np.argmax(np.array(enemies)[:, 1])]
+        else:
+            self.target_enemis = None
 
     def get_excluded_actions(self, obs):
         excluded_actions = []
@@ -360,24 +494,33 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         inactiv_worker = obs.observation['player'][7]
 
         # Si pas de centre de command disponible ou le nombre de SCV >= 15 (à l'écran) ou nb total de worker > 20
-        if self.cc_count == 0 or self.scv_count >= 15 or worker_supply > 20 or self.mining_owned < 50:
+        if self.cc_count == 0 or self.scv_count >= 20 or worker_supply > 22 or self.mining_owned < 50 or \
+                self.mineral_restant > 0:
             excluded_actions.append(ACTION_ID_TRAIN_SCV)
 
-        # Si nb de supply depot >= 6 ou pas de worker ou place disponible > 4
-        if self.supply_depot_count >= 6 or worker_supply == 0 or supply_free > 4 or self.mining_owned < 100:
+        # Si pas de worker ou place disponible > 4
+        if self.supply_depot_count >= 6 or worker_supply == 0 or supply_free > 17 or self.mining_owned < 100 or \
+                self.exclude_build_supply_depot is True:
             excluded_actions.append(ACTION_ID_BUILD_SUPPLY_DEPOT)
 
-        # Si pas de supply depot ou nb de barrack >= 2 ou pas de worker
-        if self.supply_depot_count == 0 or self.barracks_count >= 2 or worker_supply == 0 or self.mining_owned < 150:
+        # Si pas de mur de supply depot ou nb de barrack >= 2 ou pas de worker
+        if supply_limit <= 30 or self.barracks_count >= 2 or worker_supply == 0 or self.mining_owned < 150:
             excluded_actions.append(ACTION_ID_BUILD_BARRACKS)
 
-        # Si pas de place ou pas de barrack
-        if supply_free == 0 or self.barracks_count == 0 or self.mining_owned < 50:
+        # Si pas de place ou pas de barrack ou déjà beacuoup de marine
+        if supply_free == 0 or self.barracks_count == 0 or self.marine_count >= 15 or self.mining_owned < 50:
             excluded_actions.append(ACTION_ID_TRAIN_MARINE)
 
-        # Si pas de worker dispo ou déjà 2 rafinery ou TODO il faudrait vérifier que les deux minerais sont bien présent
-        if worker_supply == 0 or self.refinery_count >= 2 or self.mining_owned < 75:
+        # Si pas de place ou pas de starport amélioré
+        if supply_free == 0 or self.starport_techlab_count == 0 or self.mining_owned < 400 or self.vespene_owned < 300:
+            excluded_actions.append(ACTION_ID_TRAIN_BATTLE_CRUISER)
+
+        # Si pas de worker dispo ou déjà rafinery présentes sur les vespene restant
+        if worker_supply == 0 or self.refinery_count >= self.vespene_geyser_count or self.mining_owned < 75:
             excluded_actions.append(ACTION_ID_BUILD_REFINERY)
+
+        if self.refinery_count <= 0 or worker_supply == 0 or (self.scv_in_vespene1 >= 3 and self.scv_in_vespene2 >= 3):
+            excluded_actions.append(ACTION_ID_SCV_TO_VESPENE)
 
         # Si pas de worker inactif
         if inactiv_worker <= 0:
@@ -385,7 +528,7 @@ class SparseAgentDefensive(base_agent.BaseAgent):
 
         # Si pas de supply ou pas de barrack ou pas de worker ou usine déja construite
         if \
-                self.supply_depot_count == 0 or \
+                supply_limit <= 15 or \
                 self.barracks_count == 0 or \
                 worker_supply == 0 or \
                 self.engineering_bay_built is True or \
@@ -394,27 +537,59 @@ class SparseAgentDefensive(base_agent.BaseAgent):
 
         # Si pas de supply ou pas de barrack ou pas de worker ou tourelle missile construite ou usine pas construite
         if \
-                self.supply_depot_count == 0 or \
+                supply_limit <= 15 or \
                 self.barracks_count == 0 or \
                 worker_supply == 0 or \
-                self.missile_turret_count > 0 is True or \
+                self.missile_turret_count > 0 or \
                 self.engineering_bay_built is False or \
                 self.mining_owned < 100:
             excluded_actions.append(ACTION_ID_BUILD_MISSILE_TURRET)
 
+        # Si déjà une usine ou pas de caserne ou pas au moins 150 minerais ou 100 vespene
+        if self.factory_count > 0 or self.barracks_count == 0 or self.mining_owned < 150 or self.vespene_owned < 100:
+            excluded_actions.append(ACTION_ID_BUILD_FACTORY)
+
+        # Si pas d'usine ou si déjà un starport pas au moins 150 minerais
+        if self.factory_count == 0 or \
+                self.starport_count > 0 or \
+                self.starport_techlab_count > 0 or \
+                self.mining_owned < 100:
+            excluded_actions.append(ACTION_ID_BUILD_STARPORT)
+
+        # Si pas de starport ou pas au moins 150 minerais ou 150 vespene
+        if self.starport_count == 0 or self.mining_owned < 150 or self.vespene_owned < 150:
+            excluded_actions.append(ACTION_ID_BUILD_FUSION_CORE)
+
+        # Si pas de noyau de fusion ou pas de starport au moins 50 minerais ou 25 vespene
+        if self.fusion_core_count == 0 or \
+                self.starport_count == 0 or \
+                self.mining_owned < 50 or \
+                self.vespene_owned < 25:
+            excluded_actions.append(ACTION_ID_UPGRADE_STARPORT_TECHLAB)
+
         # Si pas de supply ou pas de barrack ou pas de worker ou pas d'armée ou usine pas construite
-        if self.supply_depot_count == 0 or \
+        if supply_limit <= 15 or \
                 self.barracks_count == 0 or \
                 worker_supply == 0 or \
-                army_supply <= 2 or \
+                army_supply <= 3 or \
                 self.engineering_bay_built is False or \
                 self.mining_owned < 200:
-            for action in ACTION_ID_DEFEND_POSITION:
-                excluded_actions.append(action)
+            # for action in ACTION_ID_DEFEND_POSITION:
+            #     excluded_actions.append(action)
+            excluded_actions.append(ACTION_ID_DEFEND_POSITION)
 
-        # Si l'armée est inférieur à 8
-        if army_supply <= 8:
-            excluded_actions.append(ACTION_ID_ATTACK)
+        # Si l'armée est inférieur ou égal à 10 ou 3 hypérion construit ou plus de minerai
+        if army_supply <= 10 or self.battle_cruiser_built < 2 or self.mineral_restant > 0:
+            excluded_actions.append(ACTION_ID_ATTACK_1)
+            excluded_actions.append(ACTION_ID_ATTACK_2)
+
+        # Si les supplys dépots du mur ont étés baissés
+        if not self.supply_downed:
+            excluded_actions.append(ACTION_ID_SUPPLY_DEPOT_RAISE_QUICK)
+
+        # Si pas d'ennemis à l'écran ou écran pas sur command center
+        if self.target_enemis is None or self.cc_count == 0 or army_supply > 0:
+            excluded_actions.append(ACTION_ID_DEFEND_VS_ENEMY)
 
         return excluded_actions
 
@@ -438,6 +613,8 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         # Début de la partie (Appelé une fois)
         if obs.first():
             self.init_base(obs)
+            self.init_current_state(obs)
+            return self.action_re_init_smart_action()
 
         # Initialisation de l'état actuelle des éléments du joueurs.
         self.init_current_state(obs)
@@ -453,24 +630,28 @@ class SparseAgentDefensive(base_agent.BaseAgent):
             self.previous_state = self.current_state
             self.previous_action = self.qlearn.choose_action(str(self.current_state), excluded_actions)
             self.smart_action, self.smart_action_x, self.smart_action_y = self.split_action(self.previous_action)
-            print(self.smart_action)
-            print(self.previous_action)
 
         # smart action choisi par le qlearning ?
         if self.smart_action in ACTIONS_BUILD_BUILDING:
             return self.actions_build_building()
         elif self.smart_action in ACTIONS_TRAIN_UNIT:
-            return self.actions_build_unit()
+            return self.actions_train_unit()
         elif self.smart_action == ACTION_DEFEND_POSITION:
             return self.action_defend_position()
         elif self.smart_action == ACTION_SCV_INACTIV_TO_MINE:
             return self.action_scv_inactiv_to_mine()
-        elif self.smart_action == ACTION_ATTACK:
+        elif self.smart_action == ACTION_SCV_TO_VESPENE:
+            return self.action_scv_to_vespene()
+        elif self.smart_action == ACTION_ATTACK_1 or self.smart_action == ACTION_ATTACK_2:
             return self.action_attack()
         elif self.smart_action == ACTION_DO_NOTHING:
             return self.action_do_nothing()
         elif self.smart_action == ACTION_ECONOMISE:
             return self.action_economise()
+        elif self.smart_action == ACTION_SUPPLY_DEPOT_RAISE_QUICK:
+            return self.action_supply_depot_raise_quick()
+        elif self.smart_action == ACTION_DEFEND_VS_ENEMY:
+            return self.action_defend_vs_enemy()
         return self.move_camera_to_base()
 
     def select_unit(self, unit):
@@ -482,6 +663,14 @@ class SparseAgentDefensive(base_agent.BaseAgent):
                 target = [unit_x[i], unit_y[i]]
                 self.unit_selected = "SCV"
                 return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])
+        # Séléctionner un SCV
+        if unit == "ALLSCV":
+            unit_y, unit_x = (self.unit_type == _TERRAN_SCV).nonzero()
+            if unit_y.any() and _SELECT_POINT in self.obs.observation['available_actions']:
+                i = random.randint(0, len(unit_y) - 1)
+                target = [unit_x[i], unit_y[i]]
+                self.unit_selected = "ALLSCV"
+                return actions.FunctionCall(_SELECT_POINT, [_SELECT_ALL, target])
         # Séléctionner un worker inactif
         elif unit == "IDLEWORKER":
             if _SELECT_IDLE_WORKER in self.obs.observation['available_actions']:
@@ -512,6 +701,25 @@ class SparseAgentDefensive(base_agent.BaseAgent):
                 target = [int(self.cc_x.mean()), int(self.cc_y.mean())]
                 self.unit_selected = "COMMANDCENTER"
                 return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])
+        # Séléctionner le starport
+        elif unit == "STARPORT":
+            if self.starport_count > 0 and _SELECT_POINT in self.obs.observation['available_actions']:
+                target = [int(self.starport_x.mean()), int(self.starport_y.mean())]
+                self.unit_selected = "STARPORT"
+                return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])
+        # Séléctionner le starport amélioré
+        elif unit == "STARPORTTECHLAB":
+            if self.starport_techlab_count > 0 and _SELECT_POINT in self.obs.observation['available_actions']:
+                target = [int(self.starport_techlab_x.mean()), int(self.starport_techlab_y.mean())]
+                self.unit_selected = "STARPORTTECHLAB"
+                return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])
+        # Séléctionner une caserne
+        elif unit == "SUPPLYDEPOT":
+            if self.depot_y.any() and _SELECT_POINT in self.obs.observation['available_actions']:
+                i = random.randint(0, len(self.depot_y) - 1)
+                target = [self.depot_x[i], self.depot_y[i]]
+                self.unit_selected = "SUPPLYDEPOT"
+                return actions.FunctionCall(_SELECT_POINT, [_SELECT_ALL, target])
         return self.move_camera_to_base()
 
     # ACTIONS GLOBAL
@@ -565,31 +773,57 @@ class SparseAgentDefensive(base_agent.BaseAgent):
                 return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, target])
         return self.action_re_init_smart_action()
 
+    def action_scv_to_vespene(self):
+        if self.unit_selected != "SCV":
+            return self.select_unit("SCV")
+        elif _HARVEST_GATHER in self.obs.observation['available_actions']:
+            if self.refinery_count == 1 or self.scv_in_vespene1 < 3:
+                target = [int(self.vespene_center[0][0]), int(self.vespene_center[0][1])]
+                self.scv_in_vespene1 += 1
+                self.end_action()
+                return actions.FunctionCall(_HARVEST_GATHER, [_NOT_QUEUED, target])
+            elif self.refinery_count == 2 or self.scv_in_vespene1 < 3:
+                target = [int(self.vespene_center[1][0]), int(self.vespene_center[1][1])]
+                self.scv_in_vespene2 += 1
+                self.end_action()
+                return actions.FunctionCall(_HARVEST_GATHER, [_NOT_QUEUED, target])
+        return self.action_re_init_smart_action()
+
     def action_defend_position(self):
         if self.unit_selected != "SCV" and self.move_number == 0:
             return self.select_unit("SCV")
 
-        # Déplacer la caméra vers le zone choisi par la smart action
+        # Activer le mode réparation auto du SCV
         if self.move_number == 0:
+            self.inc_move_number()
+            if _EFFECT_REPAIR_SCV_AUTOCAST in self.obs.observation["available_actions"]:
+                return actions.FunctionCall(_EFFECT_REPAIR_SCV_AUTOCAST, [])
+
+        # Déplacer la caméra vers le zone choisi par la smart action
+        if self.move_number == 1:
             if _MOVE_CAMERA in self.obs.observation["available_actions"]:
                 self.inc_move_number()
-                return actions.FUNCTIONS.move_camera([self.smart_action_x, self.smart_action_y])
-        # Construire dans la zone à un point random au moins 2 bunker et jusqu'à 2 tourelles
-        elif self.move_number == 1:
+                return actions.FUNCTIONS.move_camera(self.target_rally_unit_minimap)
+        # Construire dans la zone à un point random jusqu'à 4 bunker et jusqu'à 4 tourelles
+        elif self.move_number == 2:
             self.inc_move_number()
             x = random.randint(0, 83)
             y = random.randint(0, 83)
-            if 0 <= self.bunker_count < 2 and _BUILD_BUNKER in self.obs.observation['available_actions']:
+            action = random.randint(0, 1)
+            if action == 0 and self.bunker_count < 4 and _BUILD_BUNKER in self.obs.observation['available_actions']:
                 return actions.FunctionCall(_BUILD_BUNKER, [_NOT_QUEUED, [x, y]])
             elif \
-                    0 <= self.missile_turret_count < 2 and \
+                    action == 1 and \
+                    self.missile_turret_count < 4 and \
                     _BUILD_MISSILE_TURRET in self.obs.observation['available_actions']:
                 return actions.FunctionCall(_BUILD_MISSILE_TURRET, [_NOT_QUEUED, [x, y]])
+            else:
+                return self.action_do_nothing()
 
-        elif self.move_number == 2:
+        elif self.move_number == 3:
             army_supply = self.obs.observation['player'][5]
             # Si l'armée n'est pas séléctionnée
-            if self.unit_selected != "ARMY" and self.move_number == 2 and army_supply > 0:
+            if self.unit_selected != "ARMY" and army_supply > 0:
                 return self.select_unit("ARMY")
             # Si l'armée est séléctionnée
             self.inc_move_number()
@@ -599,12 +833,12 @@ class SparseAgentDefensive(base_agent.BaseAgent):
                 i = random.randint(0, len(self.bunker_y) - 1)
                 target = [self.bunker_x[i], self.bunker_y[i]]
                 return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, target])
-            elif _ATTACK_MINIMAP in self.obs.observation['available_actions'] and self.unit_selected == "ARMY":
-                return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [self.smart_action_x, self.smart_action_y]])
+            elif _MOVE_MINIMAP in self.obs.observation['available_actions'] and self.unit_selected == "ARMY":
+                return actions.FunctionCall(_MOVE_MINIMAP, [_NOT_QUEUED, self.target_rally_unit_minimap])
 
-        elif self.move_number == 3:
+        elif self.move_number == 4:
             # Séléctionner le bunker pour y faire rentrer un marine
-            if self.unit_selected != "BUNKER" and self.move_number == 3 and self.bunker_y.any():
+            if self.unit_selected != "BUNKER" and self.bunker_y.any():
                 return self.select_unit("BUNKER")
             self.inc_move_number()
             if _LOAD_BUNKER_SCREEN in self.obs.observation['available_actions'] and self.marine_count > 0:
@@ -613,14 +847,72 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         return self.action_re_init_smart_action()
 
     def action_attack(self):
-        if self.unit_selected != "ARMY":
-            return self.select_unit("ARMY")
+        if self.move_number == 0:
+            if _MOVE_CAMERA in self.obs.observation["available_actions"]:
+                self.inc_move_number()
+                return actions.FUNCTIONS.move_camera(self.target_rally_unit_minimap)
 
-        if _ATTACK_MINIMAP in self.obs.observation['available_actions']:
-            self.end_action()
-            if self.base_top_left:
-                return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [39, 45]])
-            return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, [21, 24]])
+        elif self.move_number == 1:
+            if self.unit_selected != "SUPPLYDEPOT":
+                return self.select_unit("SUPPLYDEPOT")
+            else:
+                self.inc_move_number()
+                if _MORPH_SUPPLYDEPOT_LOWER_QUICK in self.obs.observation['available_actions']:
+                    self.supply_downed = True
+                    return actions.FunctionCall(_MORPH_SUPPLYDEPOT_LOWER_QUICK, [_QUEUED])
+
+        elif self.move_number == 2:
+            if self.unit_selected != "ARMY":
+                return self.select_unit("ARMY")
+
+            if _ATTACK_MINIMAP in self.obs.observation['available_actions']:
+                if self.smart_action == ACTION_ATTACK_1:
+                    if self.base_top_left:
+                        rand_x = random.randint(36, 42)
+                        rand_y = random.randint(42, 48)
+                        target = [rand_x, rand_y]
+                    else:
+                        rand_x = random.randint(18, 24)
+                        rand_y = random.randint(21, 27)
+                        target = [rand_x, rand_y]
+                    self.end_action()
+                    return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, target])
+                else:
+                    random_choice = random.randint(0, 1)
+                    if random_choice == 0:
+                        rand_x = random.randint(15, 21)
+                        rand_y = random.randint(47, 53)
+                        target = [rand_x, rand_y]
+                    else:
+                        rand_x = random.randint(36, 42)
+                        rand_y = random.randint(17, 23)
+                        target = [rand_x, rand_y]
+                    self.end_action()
+                    return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, target])
+        return self.action_re_init_smart_action()
+
+    def action_supply_depot_raise_quick(self):
+        if self.move_number == 0:
+            if _MOVE_CAMERA in self.obs.observation["available_actions"]:
+                self.inc_move_number()
+                return actions.FUNCTIONS.move_camera(self.target_rally_unit_minimap)
+
+        elif self.move_number == 1:
+            if self.unit_selected != "SUPPLYDEPOT" and self.supply_depot_count > 0:
+                return self.select_unit("SUPPLYDEPOT")
+            else:
+                self.end_action()
+                if _MORPH_SUPPLYDEPOT_RAISE_QUICK in self.obs.observation['available_actions']:
+                    self.supply_downed = False
+                    return actions.FunctionCall(_MORPH_SUPPLYDEPOT_RAISE_QUICK, [_QUEUED])
+        return self.action_re_init_smart_action()
+
+    def action_defend_vs_enemy(self):
+        if self.unit_selected != "ALLSCV":
+            return self.select_unit("ALLSCV")
+        self.end_action()
+        if _ATTACK_SCREEN in self.obs.observation['available_actions']:
+            return actions.FunctionCall(_ATTACK_SCREEN, [_QUEUED, self.target_enemis])
         return self.action_re_init_smart_action()
 
     # ACTIONS GROUPES
@@ -641,14 +933,24 @@ class SparseAgentDefensive(base_agent.BaseAgent):
             return self.action_build_refinery()
         elif self.smart_action == ACTION_BUILD_MISSILE_TURRET:
             return self.action_build_missile_turret()
+        elif self.smart_action == ACTION_BUILD_FACTORY:
+            return self.action_build_factory()
+        elif self.smart_action == ACTION_BUILD_STARPORT:
+            return self.action_build_starport()
+        elif self.smart_action == ACTION_BUILD_FUSION_CORE:
+            return self.action_build_fusion_core()
+        elif self.smart_action == ACTION_UPGRADE_STARPORT_TECHLAB:
+            return self.action_upgrade_starport_techlab()
         else:
             return self.action_re_init_smart_action()
 
-    def actions_build_unit(self):
+    def actions_train_unit(self):
         if self.smart_action == ACTION_TRAIN_SCV:
             return self.action_train_scv()
         elif self.smart_action == ACTION_TRAIN_MARINE:
             return self.action_train_marine()
+        elif self.smart_action == ACTION_TRAIN_BATTLE_CRUISER:
+            return self.action_train_battle_cruiser()
         else:
             return self.action_re_init_smart_action()
 
@@ -656,30 +958,86 @@ class SparseAgentDefensive(base_agent.BaseAgent):
     # ------------------------------------------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------------------------------------------
     def action_build_supply_depot(self):
-        # Construction du supply depot
-        if _BUILD_SUPPLY_DEPOT in self.obs.observation['available_actions']:
-            if self.cc_screen_y.any():
-                target = self.transform_distance(
-                    round(self.cc_screen_x.mean()),
-                    self.supply_depot_x,
-                    round(self.cc_screen_y.mean()),
-                    self.supply_depot_y
-                )
-                self.supply_depot_y += 2
-                if 0 <= target[0] < 83 and 0 <= target[1] < 83:
+        # Déplacer la caméra vers l'endroit à bloquer
+        if self.move_number == 1:
+            if _MOVE_CAMERA in self.obs.observation["available_actions"]:
+                self.inc_move_number()
+                return actions.FUNCTIONS.move_camera(self.target_rally_unit_minimap)
+            else:
+                return actions.FunctionCall(_NO_OP, [])
+
+        # Construire le mur de dépôt de ravitaillement
+        elif self.move_number == 2:
+            if _BUILD_SUPPLY_DEPOT in self.obs.observation['available_actions']:
+                coord_supply_y, coord_supply_x = (self.unit_type == _TERRAN_SUPPLY_DEPOT).nonzero()
+                coord_supply = []
+                for i, val in enumerate(coord_supply_x):
+                    coord_supply.append([coord_supply_x[i], coord_supply_y[i]])
+                if self.base_top_left:
+                    # Si première fois ou mur cassé
+                    if self.supply_depot_count == 0 or \
+                            (self.anti_zerg_rush_wall is True and [46, 34] not in coord_supply):
+                        target = [46, 34]
+                    # Si première fois ou mur cassé
+                    elif self.supply_depot_count == 1 or \
+                            (self.anti_zerg_rush_wall is True and [50, 42] not in coord_supply):
+                        target = [50, 42]
+                    # Si première fois ou mur cassé
+                    elif self.supply_depot_count == 2 or \
+                            (self.anti_zerg_rush_wall is True and [58, 46] not in coord_supply):
+                        target = [58, 46]
+                    else:
+                        self.anti_zerg_rush_wall = True
+                        self.inc_move_number()
+                        return self.move_camera_to_base()
                     self.end_action()
                     return actions.FunctionCall(_BUILD_SUPPLY_DEPOT, [_NOT_QUEUED, target])
+                else:
+                    # Si première fois ou mur cassé
+                    if self.supply_depot_count == 0 or \
+                            (self.anti_zerg_rush_wall is True and [40, 56] not in coord_supply):
+                        target = [40, 56]
+                    # Si première fois ou mur cassé
+                    elif self.supply_depot_count == 1 or \
+                            (self.anti_zerg_rush_wall is True and [36, 48] not in coord_supply):
+                        target = [36, 48]
+                    # Si première fois ou mur cassé
+                    elif self.supply_depot_count == 2 or \
+                            (self.anti_zerg_rush_wall is True and [30, 44] not in coord_supply):
+                        target = [30, 44]
+                    else:
+                        self.anti_zerg_rush_wall = True
+                        self.inc_move_number()
+                        return self.move_camera_to_base()
+                    self.end_action()
+                    return actions.FunctionCall(_BUILD_SUPPLY_DEPOT, [_NOT_QUEUED, target])
+        # Si mur déja fait alors construire à côté de la base les supply depots
+        elif self.move_number == 3:
+            if _BUILD_SUPPLY_DEPOT in self.obs.observation['available_actions']:
+                if self.cc_screen_y.any():
+                    target = self.transform_distance(
+                        round(self.cc_screen_x.mean()),
+                        self.supply_depot_x,
+                        round(self.cc_screen_y.mean()),
+                        self.supply_depot_y
+                    )
+                    self.supply_depot_y += 2
+                    if 0 <= target[0] < 83 and 0 <= target[1] < 83:
+                        self.end_action()
+                        return actions.FunctionCall(_BUILD_SUPPLY_DEPOT, [_NOT_QUEUED, target])
+                    else:
+                        self.exclude_build_supply_depot = True
         return self.action_re_init_smart_action()
 
     def action_build_barracks(self):
         if _BUILD_BARRACKS in self.obs.observation['available_actions']:
             if self.cc_screen_y.any():
                 if self.barracks_count == 0:
-                    target = self.transform_distance(round(self.cc_screen_x.mean()), 15,
-                                                     round(self.cc_screen_y.mean()), -9)
+                    target = self.transform_distance(round(self.cc_screen_x.mean()), 11,
+                                                     round(self.cc_screen_y.mean()), -6)
                 else:
-                    target = self.transform_distance(round(self.cc_screen_x.mean()), 15,
-                                                     round(self.cc_screen_y.mean()), 12)
+                    target = self.transform_distance(round(self.cc_screen_x.mean()), 11,
+                                                     round(self.cc_screen_y.mean()), 6)
                 self.end_action()
                 return actions.FunctionCall(_BUILD_BARRACKS, [_NOT_QUEUED, target])
         return self.action_re_init_smart_action()
@@ -689,9 +1047,9 @@ class SparseAgentDefensive(base_agent.BaseAgent):
             if self.cc_screen_y.any():
                 target = self.transform_distance(
                     round(self.cc_screen_x.mean()),
-                    0,
+                    2,
                     round(self.cc_screen_y.mean()),
-                    15
+                    12
                 )
                 self.end_action()
                 return actions.FunctionCall(_BUILD_MISSILE_TURRET, [_NOT_QUEUED, target])
@@ -700,18 +1058,56 @@ class SparseAgentDefensive(base_agent.BaseAgent):
     def action_build_engineering_bay(self):
         if _BUILD_ENGINEERING_BAY in self.obs.observation['available_actions']:
             if self.cc_screen_y.any():
-                target = self.transform_distance(round(self.cc_screen_x.mean()), -8,
-                                                 round(self.cc_screen_y.mean()), 15)
+                target = self.transform_distance(round(self.cc_screen_x.mean()), -6,
+                                                 round(self.cc_screen_y.mean()), 12)
                 self.end_action()
                 return actions.FunctionCall(_BUILD_ENGINEERING_BAY, [_NOT_QUEUED, target])
         return self.action_re_init_smart_action()
 
     def action_build_refinery(self):
         if _BUILD_REFINERY in self.obs.observation['available_actions']:
-            if self.refinery_count <= 1:
-                target = [round(self.vespene_x.mean()), round(self.vespene_y.mean())]
+            if self.refinery_count <= 0:
+                target = [int(self.vespene_center[0][0]), int(self.vespene_center[0][1])]
+            else:
+                target = [int(self.vespene_center[1][0]), int(self.vespene_center[1][1])]
+            self.end_action()
+            return actions.FunctionCall(_BUILD_REFINERY, [_NOT_QUEUED, target])
+        return self.action_re_init_smart_action()
+
+    def action_build_factory(self):
+        if _BUILD_FACTORY in self.obs.observation['available_actions']:
+            if self.cc_screen_y.any():
+                target = self.transform_distance(round(self.cc_screen_x.mean()), -6,
+                                                 round(self.cc_screen_y.mean()), 22)
                 self.end_action()
-                return actions.FunctionCall(_BUILD_REFINERY, [_NOT_QUEUED, target])
+                return actions.FunctionCall(_BUILD_FACTORY, [_NOT_QUEUED, target])
+        return self.action_re_init_smart_action()
+
+    def action_build_starport(self):
+        if _BUILD_STARPORT in self.obs.observation['available_actions']:
+            if self.cc_screen_y.any():
+                target = self.transform_distance(round(self.cc_screen_x.mean()), 12,
+                                                 round(self.cc_screen_y.mean()), 22)
+                self.end_action()
+                return actions.FunctionCall(_BUILD_STARPORT, [_NOT_QUEUED, target])
+        return self.action_re_init_smart_action()
+
+    def action_build_fusion_core(self):
+        if _BUILD_FUSION_CORE in self.obs.observation['available_actions']:
+            if self.cc_screen_y.any():
+                target = self.transform_distance(round(self.cc_screen_x.mean()), -20,
+                                                 round(self.cc_screen_y.mean()), 22)
+                self.end_action()
+                return actions.FunctionCall(_BUILD_FUSION_CORE, [_NOT_QUEUED, target])
+        return self.action_re_init_smart_action()
+
+    def action_upgrade_starport_techlab(self):
+        if self.unit_selected != "STARPORT":
+            return self.select_unit("STARPORT")
+
+        if _BUILD_TECHLAB_STARPORT in self.obs.observation['available_actions']:
+            self.end_action()
+            return actions.FunctionCall(_BUILD_TECHLAB_STARPORT, [_QUEUED])
         return self.action_re_init_smart_action()
 
     # ACTIONS TRAIN
@@ -731,10 +1127,27 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         if self.unit_selected != "BARRACK":
             return self.select_unit("BARRACK")
         else:
+            if self.rally_unit_barracks is False and _RALLY_UNITS_MINIMAP in self.obs.observation['available_actions']:
+                self.rally_unit_barracks = True
+                return actions.FunctionCall(_RALLY_UNITS_MINIMAP, [_NOT_QUEUED, self.target_rally_unit_minimap])
             # Lancement construction du marine
             if _TRAIN_MARINE in self.obs.observation['available_actions']:
                 self.end_action()
                 return actions.FunctionCall(_TRAIN_MARINE, [_QUEUED])
+        return self.action_re_init_smart_action()
+
+    def action_train_battle_cruiser(self):
+        if self.unit_selected != "STARPORT":
+            return self.select_unit("STARPORT")
+        else:
+            if self.rally_unit_starport is False and _RALLY_UNITS_MINIMAP in self.obs.observation['available_actions']:
+                self.rally_unit_starport = True
+                return actions.FunctionCall(_RALLY_UNITS_MINIMAP, [_NOT_QUEUED, self.target_rally_unit_minimap])
+            # Lancement construction du marine
+            if _TRAIN_BATTLE_CRUISER in self.obs.observation['available_actions']:
+                self.battle_cruiser_built += 1
+                self.end_action()
+                return actions.FunctionCall(_TRAIN_BATTLE_CRUISER, [_QUEUED])
         return self.action_re_init_smart_action()
     # ------------------------------------------------------------------------------------------------------------------
     # ------------------------------------------------------------------------------------------------------------------
@@ -757,15 +1170,15 @@ class SparseAgentDefensive(base_agent.BaseAgent):
             return actions.FunctionCall(_NO_OP, [])
 
 
-def save_score(score, steps):
+def save_score(score, steps, win):
     try:
         num_lines = sum(1 for _ in open(_SCORE_FILE)) + 1
     except:
         num_lines = 1
     with open(_SCORE_FILE, "a+") as scores_file:
-        print("{};{};{}"
+        print("{};{};{};{}"
               # .format(num_lines, datetime.timedelta(seconds=(time.time() - start_time)), score),
-              .format(num_lines, steps, score),
+              .format(num_lines, steps, score, win),
               file=scores_file)
 
 
@@ -796,7 +1209,6 @@ def run(agent):
                     step_actions = [agent.step(timesteps[0])]
                     if timesteps[0].last():
                         break
-                    print(step_actions)
                     timesteps = env.step(step_actions)
     except KeyboardInterrupt:
         pass
