@@ -312,11 +312,6 @@ class SparseAgentDefensive(base_agent.BaseAgent):
             return [x - x_distance, y - y_distance]
         return [x + x_distance, y + y_distance]
 
-    def transform_location(self, x, y):
-        if not self.base_top_left:
-            return [64 - x, 64 - y]
-        return [x, y]
-
     @staticmethod
     def split_action(action_id):
         smart_action = SMART_ACTIONS[action_id]
@@ -597,7 +592,7 @@ class SparseAgentDefensive(base_agent.BaseAgent):
             excluded_actions.append(ACTION_ID_SUPPLY_DEPOT_RAISE_QUICK)
 
         # Si pas d'ennemis à l'écran ou écran pas sur command center
-        if self.target_enemis is None or self.cc_count == 0 or army_count > 0:
+        if self.target_enemis is None or self.cc_count == 0 or army_count > 0 or worker_supply <= 0:
             excluded_actions.append(ACTION_ID_DEFEND_VS_ENEMY)
 
         return excluded_actions
@@ -632,10 +627,12 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         if self.previous_action is not None:
             self.qlearn.learn(str(self.previous_state), self.previous_action, 0, str(self.current_state))
 
+        print(self.smart_action)
         # Choix de la smart_action en fonction des éléments du jeu, si plus aucune action en cours
         if self.smart_action is None:
             self.init_move_number()
             excluded_actions = self.get_excluded_actions(obs)
+            excluded_actions = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,18,19]
             self.previous_state = self.current_state
             self.previous_action = self.qlearn.choose_action(str(self.current_state), excluded_actions)
             self.smart_action, self.smart_action_x, self.smart_action_y = self.split_action(self.previous_action)
@@ -947,8 +944,8 @@ class SparseAgentDefensive(base_agent.BaseAgent):
             return self.select_unit("ALLSCV")
         if self.move_number == 0:
             self.inc_move_number()
-            if _ATTACK_SCREEN in self.obs.observation['available_actions']:
-                return actions.FunctionCall(_ATTACK_SCREEN, [_QUEUED, self.target_enemis])
+            if _ATTACK_SCREEN in self.obs.observation['available_actions'] and self.target_enemis is not None:
+                return actions.FunctionCall(_ATTACK_SCREEN, [_NOT_QUEUED, self.target_enemis])
         return self.action_re_init_smart_action()
 
     # ACTIONS GROUPES
