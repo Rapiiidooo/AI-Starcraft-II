@@ -19,8 +19,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/sparse_agent_defensive.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="250">
-              <caret line="944" column="33" lean-forward="true" selection-start-line="944" selection-start-column="33" selection-end-line="944" selection-end-column="33" />
+            <state relative-caret-position="391">
+              <caret line="632" column="61" lean-forward="true" selection-start-line="632" selection-start-column="61" selection-end-line="632" selection-end-column="61" />
               <folding>
                 <element signature="e#0#11#0" expanded="true" />
               </folding>
@@ -231,7 +231,8 @@
       <workItem from="1559364739296" duration="1620000" />
       <workItem from="1559366672073" duration="886000" />
       <workItem from="1559380340532" duration="1524000" />
-      <workItem from="1559384447793" duration="525000" />
+      <workItem from="1559384447793" duration="645000" />
+      <workItem from="1559385133437" duration="20000" />
     </task>
     <task id="LOCAL-00001" summary="new branch">
       <created>1556049677141</created>
@@ -317,23 +318,30 @@
       <option name="project" value="LOCAL" />
       <updated>1559367523321</updated>
     </task>
-    <option name="localTasksCounter" value="13" />
+    <task id="LOCAL-00013" summary="oublie check if list d'ennemis présent != None pour action defend scv vs enemy">
+      <created>1559385054954</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1559385054954</updated>
+    </task>
+    <option name="localTasksCounter" value="14" />
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="172059000" />
+    <option name="totallyTimeSpent" value="172199000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="-8" y="-8" width="1936" height="1056" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.48137537" visible="true" weight="0.12686567" />
-      <window_info id="Structure" order="1" sideWeight="0.51862466" side_tool="true" visible="true" weight="0.12686567" />
+      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.4810401" visible="true" weight="0.12793177" />
+      <window_info id="Structure" order="1" sideWeight="0.51895994" side_tool="true" visible="true" weight="0.12793177" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" weight="0.32936078" />
       <window_info anchor="bottom" id="Run" order="2" sideWeight="0.49946696" weight="0.2272203" />
-      <window_info active="true" anchor="bottom" id="Debug" order="3" sideWeight="0.49946696" visible="true" weight="0.24377032" />
+      <window_info anchor="bottom" id="Debug" order="3" sideWeight="0.49946696" weight="0.24377032" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" />
@@ -369,14 +377,15 @@
     <MESSAGE value="toutes les positions ont étés corrigés (cause pysc2 2.0.2)" />
     <MESSAGE value="remove twice agent" />
     <MESSAGE value="last correction" />
-    <option name="LAST_COMMIT_MESSAGE" value="last correction" />
+    <MESSAGE value="oublie check if list d'ennemis présent != None pour action defend scv vs enemy" />
+    <option name="LAST_COMMIT_MESSAGE" value="oublie check if list d'ennemis présent != None pour action defend scv vs enemy" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/sparse_agent_defensive.py</url>
-          <line>942</line>
+          <line>940</line>
           <option name="timeStamp" value="6" />
         </line-breakpoint>
       </breakpoints>
@@ -620,8 +629,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/sparse_agent_defensive.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="250">
-          <caret line="944" column="33" lean-forward="true" selection-start-line="944" selection-start-column="33" selection-end-line="944" selection-end-column="33" />
+        <state relative-caret-position="391">
+          <caret line="632" column="61" lean-forward="true" selection-start-line="632" selection-start-column="61" selection-end-line="632" selection-end-column="61" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
           </folding>
