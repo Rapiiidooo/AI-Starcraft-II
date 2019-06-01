@@ -518,7 +518,11 @@ class SparseAgentDefensive(base_agent.BaseAgent):
             excluded_actions.append(ACTION_ID_BUILD_REFINERY)
 
         if self.refinery_count <= 0 or worker_supply == 0 or (self.scv_in_vespene1 >= 3 and self.scv_in_vespene2 >= 3):
-            excluded_actions.append(ACTION_ID_SCV_TO_VESPENE)
+            # Si plus de minerai mais rafinerie > 0 et worker > 0 autoriser quand même l'action
+            if self.mineral_restant <= 0 and worker_supply > 0 and self.refinery_count > 0:
+                pass
+            else:
+                excluded_actions.append(ACTION_ID_SCV_TO_VESPENE)
 
         # Si pas de worker inactif
         if inactiv_worker <= 0 or self.mineral_restant <= 0:
@@ -892,8 +896,8 @@ class SparseAgentDefensive(base_agent.BaseAgent):
                 return self.select_unit("ARMY")
             self.inc_move_number()
             if _ATTACK_MINIMAP in self.obs.observation['available_actions']:
-                # Si un enemie est présent sur la minimap
-                if len(self.enemy_y) > 0:
+                # Si un enemie est présent sur la minimap alors qu'il reste presque plus d'ennemies visible
+                if 0 < len(self.enemy_y) < 12:
                     random_choice = random.randint(0, len(self.enemy_y) - 1)
                     target = [self.enemy_x[random_choice], self.enemy_y[random_choice]]
                 # Sinon position stratégique pseudo-aléatoire
