@@ -2,8 +2,6 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="dd916463-5c40-4ef3-9377-83fba32d5fe9" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/ZergAgentAlexis.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/sparse_agent_defensive.py" beforeDir="false" afterPath="$PROJECT_DIR$/sparse_agent_defensive.py" afterDir="false" />
     </list>
@@ -14,18 +12,15 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="CoverageDataManager">
-    <SUITE FILE_PATH="coverage/AI_Starcraft_II$sparse_agent_defensive.coverage" NAME="sparse_agent_defensive Coverage Results" MODIFIED="1559363843674" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/AI_Starcraft_II$sparse_agent_defensive.coverage" NAME="sparse_agent_defensive Coverage Results" MODIFIED="1559364528218" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/sparse_agent_defensive.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="267">
-              <caret line="835" column="34" lean-forward="true" selection-start-line="835" selection-start-column="34" selection-end-line="835" selection-end-column="34" />
-              <folding>
-                <element signature="e#0#18#0" expanded="true" />
-              </folding>
+            <state relative-caret-position="620">
+              <caret line="1260" column="14" lean-forward="true" selection-start-line="1260" selection-start-column="14" selection-end-line="1260" selection-end-column="14" />
             </state>
           </provider>
         </entry>
@@ -56,6 +51,7 @@
       <find>transform</find>
       <find>transform_ac</find>
       <find>a</find>
+      <find>trans</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -224,7 +220,8 @@
       <workItem from="1559269590629" duration="849000" />
       <workItem from="1559300518255" duration="8721000" />
       <workItem from="1559344194198" duration="10327000" />
-      <workItem from="1559354624243" duration="9275000" />
+      <workItem from="1559354624243" duration="9401000" />
+      <workItem from="1559364092622" duration="482000" />
     </task>
     <task id="LOCAL-00001" summary="new branch">
       <created>1556049677141</created>
@@ -289,23 +286,30 @@
       <option name="project" value="LOCAL" />
       <updated>1559353114677</updated>
     </task>
-    <option name="localTasksCounter" value="10" />
+    <task id="LOCAL-00010" summary="toutes les positions ont étés corrigés (cause pysc2 2.0.2)">
+      <created>1559363951927</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1559363951927</updated>
+    </task>
+    <option name="localTasksCounter" value="11" />
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="166770000" />
+    <option name="totallyTimeSpent" value="167378000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="-8" y="-8" width="1936" height="1056" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.48710603" visible="true" weight="0.120469086" />
-      <window_info id="Structure" order="1" sideWeight="0.512894" side_tool="true" visible="true" weight="0.120469086" />
+      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.4862259" visible="true" weight="0.12153518" />
+      <window_info id="Structure" order="1" sideWeight="0.5137741" side_tool="true" visible="true" weight="0.12153518" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" weight="0.32936078" />
-      <window_info anchor="bottom" id="Run" order="2" sideWeight="0.49946696" weight="0.22260669" />
-      <window_info active="true" anchor="bottom" id="Debug" order="3" sideWeight="0.49946696" visible="true" weight="0.24377032" />
+      <window_info active="true" anchor="bottom" id="Run" order="2" sideWeight="0.49946696" visible="true" weight="0.21343446" />
+      <window_info anchor="bottom" id="Debug" order="3" sideWeight="0.49946696" weight="0.24377032" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" />
@@ -338,18 +342,10 @@
     <MESSAGE value="Tout est réparé !" />
     <MESSAGE value="Lot of stuff added" />
     <MESSAGE value="correction pysc2 2.0.2" />
-    <option name="LAST_COMMIT_MESSAGE" value="correction pysc2 2.0.2" />
+    <MESSAGE value="toutes les positions ont étés corrigés (cause pysc2 2.0.2)" />
+    <option name="LAST_COMMIT_MESSAGE" value="toutes les positions ont étés corrigés (cause pysc2 2.0.2)" />
   </component>
   <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/sparse_agent_defensive.py</url>
-          <line>833</line>
-          <option name="timeStamp" value="23" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
     <watches-manager>
       <configuration name="PythonConfigurationType">
         <watch expression="self.smart_action" language="Python" />
@@ -570,16 +566,11 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/scores.txt">
-      <provider selected="true" editor-type-id="text-editor" />
-    </entry>
+    <entry file="file://$PROJECT_DIR$/scores.txt" />
     <entry file="file://$PROJECT_DIR$/sparse_agent_defensive.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="267">
-          <caret line="835" column="34" lean-forward="true" selection-start-line="835" selection-start-column="34" selection-end-line="835" selection-end-column="34" />
-          <folding>
-            <element signature="e#0#18#0" expanded="true" />
-          </folding>
+        <state relative-caret-position="620">
+          <caret line="1260" column="14" lean-forward="true" selection-start-line="1260" selection-start-column="14" selection-end-line="1260" selection-end-column="14" />
         </state>
       </provider>
     </entry>

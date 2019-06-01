@@ -1235,7 +1235,7 @@ def save_score(score, steps, win):
               file=scores_file)
 
 
-def run(agent, agent2):
+def run(agent):
             with sc2_env.SC2Env(
                     map_name="Simple64",
                     players=[
@@ -1258,8 +1258,7 @@ def run(agent, agent2):
 
 def main():
     agent = SparseAgentDefensive()
-    agent2 = ZergAgentAlexis()
-    run(agent, agent2)
+    run(agent)
 
 
 dists = [d for d in pkg_resources.working_set]
