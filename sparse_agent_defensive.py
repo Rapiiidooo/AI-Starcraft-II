@@ -3,6 +3,8 @@ import os
 import random
 import sys
 import time
+import pkg_resources
+from packaging import version
 
 from sklearn.cluster import KMeans
 
@@ -10,10 +12,12 @@ from QLearningTable import QLearningTable
 import numpy as np
 import pandas as pd
 from absl import flags
+
 from pysc2.agents import base_agent
 from pysc2.env import sc2_env
 from pysc2.lib import actions
 from pysc2.lib import features
+
 
 # region Variables
 
@@ -109,8 +113,7 @@ ACTION_SCV_TO_VESPENE = 'workertovespene'
 ACTION_SCV_INACTIV_TO_MINE = 'reactiveworker'
 ACTION_DEFEND_POSITION = 'defend'
 ACTION_DEFEND_VS_ENEMY = 'defendvsenemy'
-ACTION_ATTACK_1 = 'attack1'  # correspond à la base principale
-ACTION_ATTACK_2 = 'attack2'  # correspond au minerai proche de la base principale
+ACTION_ATTACK = 'attack'
 ACTION_SUPPLY_DEPOT_RAISE_QUICK = 'supplyraiseup'
 
 # The order of ACTION ID AND IN SMART ACTION ARE VERY IMPORTANT
@@ -132,9 +135,8 @@ ACTION_ID_SCV_TO_VESPENE = 14
 ACTION_ID_SCV_INACTIV_TO_MINE = 15
 ACTION_ID_DEFEND_POSITION = 16
 ACTION_ID_DEFEND_VS_ENEMY = 17
-ACTION_ID_ATTACK_1 = 18
-ACTION_ID_ATTACK_2 = 19
-ACTION_ID_SUPPLY_DEPOT_RAISE_QUICK = 20
+ACTION_ID_ATTACK = 18
+ACTION_ID_SUPPLY_DEPOT_RAISE_QUICK = 19
 
 SMART_ACTIONS = [
     ACTION_DO_NOTHING,
@@ -155,8 +157,7 @@ SMART_ACTIONS = [
     ACTION_SCV_INACTIV_TO_MINE,
     ACTION_DEFEND_POSITION,
     ACTION_DEFEND_VS_ENEMY,
-    ACTION_ATTACK_1,
-    ACTION_ATTACK_2,
+    ACTION_ATTACK,
     ACTION_SUPPLY_DEPOT_RAISE_QUICK
 ]
 
@@ -270,7 +271,8 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         self.mining_owned = None
         self.vespene_owned = None
         self.target_enemis = None
-
+        self.enemy_x = None
+        self.enemy_y = None
         # Variable pour tester la position à la main
         self.testx = 0
         self.testy = 0
@@ -450,10 +452,10 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         self.current_state[12] = obs.observation["score_cumulative"]["score"]
 
         hot_squares = np.zeros(4)
-        enemy_y, enemy_x = (obs.observation['feature_minimap'][_PLAYER_RELATIVE] == _PLAYER_HOSTILE).nonzero()
-        for i in range(0, len(enemy_y)):
-            y = int(math.ceil((enemy_y[i] + 1) / 32))
-            x = int(math.ceil((enemy_x[i] + 1) / 32))
+        self.enemy_y, self.enemy_x = (obs.observation['feature_minimap'][_PLAYER_RELATIVE] == _PLAYER_HOSTILE).nonzero()
+        for i in range(0, len(self.enemy_y)):
+            y = int(math.ceil((self.enemy_y[i] + 1) / 32))
+            x = int(math.ceil((self.enemy_x[i] + 1) / 32))
             hot_squares[((y - 1) * 2) + (x - 1)] = 1
 
         if not self.base_top_left:
@@ -495,7 +497,7 @@ class SparseAgentDefensive(base_agent.BaseAgent):
 
         # Si pas de centre de command disponible ou le nombre de SCV >= 15 (à l'écran) ou nb total de worker > 20
         if self.cc_count == 0 or self.scv_count >= 20 or worker_supply > 22 or self.mining_owned < 50 or \
-                self.mineral_restant > 0:
+                self.mineral_restant <= 0:
             excluded_actions.append(ACTION_ID_TRAIN_SCV)
 
         # Si pas de worker ou place disponible > 4
@@ -508,11 +510,11 @@ class SparseAgentDefensive(base_agent.BaseAgent):
             excluded_actions.append(ACTION_ID_BUILD_BARRACKS)
 
         # Si pas de place ou pas de barrack ou déjà beacuoup de marine
-        if supply_free == 0 or self.barracks_count == 0 or self.marine_count >= 15 or self.mining_owned < 50:
+        if supply_free <= 0 or self.barracks_count == 0 or self.marine_count >= 15 or self.mining_owned < 50:
             excluded_actions.append(ACTION_ID_TRAIN_MARINE)
 
         # Si pas de place ou pas de starport amélioré
-        if supply_free == 0 or self.starport_techlab_count == 0 or self.mining_owned < 400 or self.vespene_owned < 300:
+        if supply_free <= 3 or self.starport_techlab_count == 0 or self.mining_owned < 400 or self.vespene_owned < 300:
             excluded_actions.append(ACTION_ID_TRAIN_BATTLE_CRUISER)
 
         # Si pas de worker dispo ou déjà rafinery présentes sur les vespene restant
@@ -523,7 +525,7 @@ class SparseAgentDefensive(base_agent.BaseAgent):
             excluded_actions.append(ACTION_ID_SCV_TO_VESPENE)
 
         # Si pas de worker inactif
-        if inactiv_worker <= 0:
+        if inactiv_worker <= 0 or self.mineral_restant <= 0:
             excluded_actions.append(ACTION_ID_SCV_INACTIV_TO_MINE)
 
         # Si pas de supply ou pas de barrack ou pas de worker ou usine déja construite
@@ -573,15 +575,22 @@ class SparseAgentDefensive(base_agent.BaseAgent):
                 worker_supply == 0 or \
                 army_supply <= 3 or \
                 self.engineering_bay_built is False or \
-                self.mining_owned < 200:
+                self.mining_owned < 200 or \
+                self.mineral_restant <= 0:
             # for action in ACTION_ID_DEFEND_POSITION:
             #     excluded_actions.append(action)
             excluded_actions.append(ACTION_ID_DEFEND_POSITION)
 
-        # Si l'armée est inférieur ou égal à 10 ou 3 hypérion construit ou plus de minerai
-        if army_supply <= 10 or self.battle_cruiser_built < 2 or self.mineral_restant > 0:
-            excluded_actions.append(ACTION_ID_ATTACK_1)
-            excluded_actions.append(ACTION_ID_ATTACK_2)
+        # Autoriser l'attaque si
+        # armée > 0 ET plus de minerai
+        # armée >= 25
+        # armée >= 10 ET hypérion >=3
+        if (army_supply > 0 and self.mineral_restant > 0) or army_supply > 25 or \
+                (army_supply >= 10 and self.battle_cruiser_built >= 3):
+            pass
+        else:
+            # Sinon l'attaque est exclue
+            excluded_actions.append(ACTION_ID_ATTACK)
 
         # Si les supplys dépots du mur ont étés baissés
         if not self.supply_downed:
@@ -642,7 +651,7 @@ class SparseAgentDefensive(base_agent.BaseAgent):
             return self.action_scv_inactiv_to_mine()
         elif self.smart_action == ACTION_SCV_TO_VESPENE:
             return self.action_scv_to_vespene()
-        elif self.smart_action == ACTION_ATTACK_1 or self.smart_action == ACTION_ATTACK_2:
+        elif self.smart_action == ACTION_ATTACK:
             return self.action_attack()
         elif self.smart_action == ACTION_DO_NOTHING:
             return self.action_do_nothing()
@@ -778,12 +787,20 @@ class SparseAgentDefensive(base_agent.BaseAgent):
             return self.select_unit("SCV")
         elif _HARVEST_GATHER in self.obs.observation['available_actions']:
             if self.refinery_count == 1 or self.scv_in_vespene1 < 3:
-                target = [int(self.vespene_center[0][0]), int(self.vespene_center[0][1])]
+                if version.parse(_PYSC2_VERSION) > version.parse('2.0.1'):
+                    rand = random.randint(0, len(self.vespene_y) - 1)
+                    target = [int(self.vespene_x[rand]), int(self.vespene_y[rand])]
+                else:
+                    target = [int(self.vespene_center[0][0]), int(self.vespene_center[0][1])]
                 self.scv_in_vespene1 += 1
                 self.end_action()
                 return actions.FunctionCall(_HARVEST_GATHER, [_NOT_QUEUED, target])
             elif self.refinery_count == 2 or self.scv_in_vespene1 < 3:
-                target = [int(self.vespene_center[1][0]), int(self.vespene_center[1][1])]
+                if version.parse(_PYSC2_VERSION) > version.parse('2.0.1'):
+                    rand = random.randint(0, len(self.vespene_y) - 1)
+                    target = [int(self.vespene_x[rand]), int(self.vespene_y[rand])]
+                else:
+                    target = [int(self.vespene_center[1][0]), int(self.vespene_center[1][1])]
                 self.scv_in_vespene2 += 1
                 self.end_action()
                 return actions.FunctionCall(_HARVEST_GATHER, [_NOT_QUEUED, target])
@@ -866,29 +883,35 @@ class SparseAgentDefensive(base_agent.BaseAgent):
                 return self.select_unit("ARMY")
 
             if _ATTACK_MINIMAP in self.obs.observation['available_actions']:
-                if self.smart_action == ACTION_ATTACK_1:
-                    if self.base_top_left:
-                        rand_x = random.randint(36, 42)
-                        rand_y = random.randint(42, 48)
-                        target = [rand_x, rand_y]
-                    else:
-                        rand_x = random.randint(18, 24)
-                        rand_y = random.randint(21, 27)
-                        target = [rand_x, rand_y]
-                    self.end_action()
-                    return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, target])
+                # Si un enemie est présent sur la minimap
+                if len(self.enemy_y) > 0:
+                    target = [self.enemy_x[0], self.enemy_y[0]]
+                # Sinon position stratégique pseudo-aléatoire
                 else:
                     random_choice = random.randint(0, 1)
+                    # Position de base principales
                     if random_choice == 0:
-                        rand_x = random.randint(15, 21)
-                        rand_y = random.randint(47, 53)
-                        target = [rand_x, rand_y]
+                        if self.base_top_left:
+                            rand_x = random.randint(36, 42)
+                            rand_y = random.randint(42, 48)
+                            target = [rand_x, rand_y]
+                        else:
+                            rand_x = random.randint(18, 24)
+                            rand_y = random.randint(21, 27)
+                            target = [rand_x, rand_y]
+                    # Position de base middle
                     else:
-                        rand_x = random.randint(36, 42)
-                        rand_y = random.randint(17, 23)
-                        target = [rand_x, rand_y]
-                    self.end_action()
-                    return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, target])
+                        random_choice = random.randint(0, 1)
+                        if random_choice == 0:
+                            rand_x = random.randint(15, 21)
+                            rand_y = random.randint(47, 53)
+                            target = [rand_x, rand_y]
+                        else:
+                            rand_x = random.randint(36, 42)
+                            rand_y = random.randint(17, 23)
+                            target = [rand_x, rand_y]
+                self.end_action()
+                return actions.FunctionCall(_ATTACK_MINIMAP, [_NOT_QUEUED, target])
         return self.action_re_init_smart_action()
 
     def action_supply_depot_raise_quick(self):
@@ -1066,10 +1089,14 @@ class SparseAgentDefensive(base_agent.BaseAgent):
 
     def action_build_refinery(self):
         if _BUILD_REFINERY in self.obs.observation['available_actions']:
-            if self.refinery_count <= 0:
-                target = [int(self.vespene_center[0][0]), int(self.vespene_center[0][1])]
+            if version.parse(_PYSC2_VERSION) > version.parse('2.0.1'):
+                rand = random.randint(0, len(self.vespene_y) - 1)
+                target = [int(self.vespene_x[rand]), int(self.vespene_y[rand])]
             else:
-                target = [int(self.vespene_center[1][0]), int(self.vespene_center[1][1])]
+                if self.refinery_count <= 0:
+                    target = [int(self.vespene_center[0][0]), int(self.vespene_center[0][1])]
+                else:
+                    target = [int(self.vespene_center[1][0]), int(self.vespene_center[1][1])]
             self.end_action()
             return actions.FunctionCall(_BUILD_REFINERY, [_NOT_QUEUED, target])
         return self.action_re_init_smart_action()
@@ -1218,6 +1245,11 @@ def main():
     agent = SparseAgentDefensive()
     run(agent)
 
+
+dists = [d for d in pkg_resources.working_set]
+for dist in dists:
+    if 'pysc2' in dist.project_name.lower():
+        _PYSC2_VERSION = dist.version
 
 if __name__ == "__main__":
     flags.FLAGS(sys.argv)
