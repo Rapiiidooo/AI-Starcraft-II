@@ -8,13 +8,12 @@ from packaging import version
 
 from sklearn.cluster import KMeans
 
-from ZergAgentAlexis import ZergAgentAlexis
 from QLearningTable import QLearningTable
 import numpy as np
 import pandas as pd
 from absl import flags
 
-from pysc2.agents import base_agent
+from pysc2.agents import base_agent, scripted_agent
 from pysc2.env import sc2_env, run_loop
 from pysc2.lib import actions
 from pysc2.lib import features
@@ -587,8 +586,7 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         # armée > 0 ET plus de minerai
         # armée >= 25
         # armée >= 10 ET hypérion >=3
-        if (army_count > 0 and self.mineral_restant <= 0) or army_count > 25 or \
-                (army_count >= 10 and self.battle_cruiser_built >= 3):
+        if (army_count > 0 and self.mineral_restant <= 0) or army_count > 20 or self.battle_cruiser_built >= 3:
             pass
         else:
             # Sinon l'attaque est exclue
@@ -882,7 +880,10 @@ class SparseAgentDefensive(base_agent.BaseAgent):
                 return actions.FUNCTIONS.move_camera(self.target_rally_unit_minimap)
 
         elif self.move_number == 1:
-            if self.unit_selected != "SUPPLYDEPOT":
+            if self.supply_downed:
+                self.inc_move_number()
+                return self.move_camera_to_base()
+            elif self.unit_selected != "SUPPLYDEPOT":
                 return self.select_unit("SUPPLYDEPOT")
             else:
                 self.inc_move_number()
@@ -1253,11 +1254,11 @@ def run(agent):
                     step_mul=8,
                     game_steps_per_episode=0,
                     visualize=False) as env:
-                run_loop.run_loop([agent], env)
+                run_loop.run_loop(agent, env)
 
 
 def main():
-    agent = SparseAgentDefensive()
+    agent = [SparseAgentDefensive()]
     run(agent)
 
 
