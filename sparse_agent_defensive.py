@@ -578,10 +578,11 @@ class SparseAgentDefensive(base_agent.BaseAgent):
             excluded_actions.append(ACTION_ID_DEFEND_POSITION)
 
         # Autoriser l'attaque si
-        # armée > 0 ET plus de minerai
+        # armée > 0 ET plus de minerai ET argent restant < 200
         # armée >= 25
         # armée >= 10 ET hypérion >=3
-        if (army_count > 0 and self.mineral_restant <= 0) or army_count > 20 or self.battle_cruiser_built >= 3:
+        if (army_count > 0 and self.mineral_restant <= 0 and self.mining_owned < 200) or \
+                army_count > 20 or self.battle_cruiser_built >= 3:
             pass
         else:
             # Sinon l'attaque est exclue
@@ -893,7 +894,8 @@ class SparseAgentDefensive(base_agent.BaseAgent):
             if _ATTACK_MINIMAP in self.obs.observation['available_actions']:
                 # Si un enemie est présent sur la minimap
                 if len(self.enemy_y) > 0:
-                    target = [self.enemy_x[0], self.enemy_y[0]]
+                    random_choice = random.randint(0, len(self.enemy_y) - 1)
+                    target = [self.enemy_x[random_choice], self.enemy_y[random_choice]]
                 # Sinon position stratégique pseudo-aléatoire
                 else:
                     random_choice = random.randint(0, 1)

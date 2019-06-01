@@ -3,6 +3,8 @@
   <component name="ChangeListManager">
     <list default="true" id="dd916463-5c40-4ef3-9377-83fba32d5fe9" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/defensive_agent_data.gz" beforeDir="false" afterPath="$PROJECT_DIR$/defensive_agent_data.gz" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scores.txt" beforeDir="false" afterPath="$PROJECT_DIR$/scores.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/sparse_agent_defensive.py" beforeDir="false" afterPath="$PROJECT_DIR$/sparse_agent_defensive.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -19,8 +21,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/sparse_agent_defensive.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="391">
-              <caret line="632" column="61" lean-forward="true" selection-start-line="632" selection-start-column="61" selection-end-line="632" selection-end-column="61" />
+            <state relative-caret-position="359">
+              <caret line="580" column="62" selection-start-line="580" selection-start-column="62" selection-end-line="580" selection-end-column="62" />
               <folding>
                 <element signature="e#0#11#0" expanded="true" />
               </folding>
@@ -57,6 +59,7 @@
       <find>trans</find>
       <find>transfo</find>
       <find>defend</find>
+      <find>action_attack</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -232,7 +235,8 @@
       <workItem from="1559366672073" duration="886000" />
       <workItem from="1559380340532" duration="1524000" />
       <workItem from="1559384447793" duration="645000" />
-      <workItem from="1559385133437" duration="20000" />
+      <workItem from="1559385133437" duration="64000" />
+      <workItem from="1559394857628" duration="268000" />
     </task>
     <task id="LOCAL-00001" summary="new branch">
       <created>1556049677141</created>
@@ -325,18 +329,25 @@
       <option name="project" value="LOCAL" />
       <updated>1559385054954</updated>
     </task>
-    <option name="localTasksCounter" value="14" />
+    <task id="LOCAL-00014" summary="rm debug">
+      <created>1559385174930</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1559385174930</updated>
+    </task>
+    <option name="localTasksCounter" value="15" />
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="172199000" />
+    <option name="totallyTimeSpent" value="172511000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="-8" y="-8" width="1936" height="1056" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.4810401" visible="true" weight="0.12793177" />
-      <window_info id="Structure" order="1" sideWeight="0.51895994" side_tool="true" visible="true" weight="0.12793177" />
+      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.47995666" visible="true" weight="0.12899786" />
+      <window_info id="Structure" order="1" sideWeight="0.5200433" side_tool="true" visible="true" weight="0.12899786" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" weight="0.32936078" />
@@ -378,14 +389,15 @@
     <MESSAGE value="remove twice agent" />
     <MESSAGE value="last correction" />
     <MESSAGE value="oublie check if list d'ennemis présent != None pour action defend scv vs enemy" />
-    <option name="LAST_COMMIT_MESSAGE" value="oublie check if list d'ennemis présent != None pour action defend scv vs enemy" />
+    <MESSAGE value="rm debug" />
+    <option name="LAST_COMMIT_MESSAGE" value="rm debug" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/sparse_agent_defensive.py</url>
-          <line>940</line>
+          <line>942</line>
           <option name="timeStamp" value="6" />
         </line-breakpoint>
       </breakpoints>
@@ -629,8 +641,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/sparse_agent_defensive.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="391">
-          <caret line="632" column="61" lean-forward="true" selection-start-line="632" selection-start-column="61" selection-end-line="632" selection-end-column="61" />
+        <state relative-caret-position="359">
+          <caret line="580" column="62" selection-start-line="580" selection-start-column="62" selection-end-line="580" selection-end-column="62" />
           <folding>
             <element signature="e#0#11#0" expanded="true" />
           </folding>
