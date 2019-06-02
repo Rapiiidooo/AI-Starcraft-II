@@ -27,7 +27,8 @@ SMART_ACTIONS = [
 def main():
     output = 'qtable.txt'
 
-    df = pd.read_pickle('data.gz', compression='gzip')
+    df = pd.read_pickle('defensive_agent_data.gz', compression='gzip')
+
     desc = df.describe(include='all').to_string()
     index_end_line = desc.find('\n')
     columns = desc[:index_end_line]

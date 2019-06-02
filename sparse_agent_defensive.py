@@ -897,7 +897,7 @@ class SparseAgentDefensive(base_agent.BaseAgent):
             self.inc_move_number()
             if _ATTACK_MINIMAP in self.obs.observation['available_actions']:
                 # Si un enemie est présent sur la minimap alors qu'il reste presque plus d'ennemies visible
-                if 0 < len(self.enemy_y) < 12:
+                if 0 < len(self.enemy_y) < 30:
                     random_choice = random.randint(0, len(self.enemy_y) - 1)
                     target = [self.enemy_x[random_choice], self.enemy_y[random_choice]]
                 # Sinon position stratégique pseudo-aléatoire
