@@ -3,21 +3,19 @@ import os
 import random
 import sys
 import time
-import pkg_resources
-from packaging import version
 
-from sklearn.cluster import KMeans
-
-from QLearningTable import QLearningTable
 import numpy as np
 import pandas as pd
+import pkg_resources
 from absl import flags
-
-from pysc2.agents import base_agent, scripted_agent
+from packaging import version
+from pysc2.agents import base_agent
 from pysc2.env import sc2_env, run_loop
 from pysc2.lib import actions
 from pysc2.lib import features
+from sklearn.cluster import KMeans
 
+from QLearningTable import QLearningTable
 
 # region Variables
 
@@ -334,7 +332,7 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         reward = obs.reward
 
         self.qlearn.learn(str(self.previous_state), self.previous_action, reward, 'terminal')
-        self.qlearn.q_table.to_pickle(DATA_FILE + '.gz', 'gzip')
+        self.qlearn.q_table.to_pickle(DATA_FILE + '.gz', compression='gzip')
 
         self.previous_action = None
         self.previous_state = None
@@ -668,7 +666,7 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         if unit == "SCV":
             unit_y, unit_x = (self.unit_type == _TERRAN_SCV).nonzero()
             if unit_y.any() and _SELECT_POINT in self.obs.observation['available_actions']:
-                i = random.randint(0, len(unit_y) - 1)
+                i = random.randint(0, abs(len(unit_y) - 1))
                 target = [unit_x[i], unit_y[i]]
                 self.unit_selected = "SCV"
                 return actions.FunctionCall(_SELECT_POINT, [_NOT_QUEUED, target])
@@ -676,7 +674,7 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         if unit == "ALLSCV":
             unit_y, unit_x = (self.unit_type == _TERRAN_SCV).nonzero()
             if unit_y.any() and _SELECT_POINT in self.obs.observation['available_actions']:
-                i = random.randint(0, len(unit_y) - 1)
+                i = random.randint(0, abs(len(unit_y) - 1))
                 target = [unit_x[i], unit_y[i]]
                 self.unit_selected = "ALLSCV"
                 return actions.FunctionCall(_SELECT_POINT, [_SELECT_ALL, target])
@@ -693,14 +691,14 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         # Séléctionner un bunker
         elif unit == "BUNKER":
             if self.bunker_y.any() and _SELECT_POINT in self.obs.observation['available_actions']:
-                i = random.randint(0, len(self.bunker_y) - 1)
+                i = random.randint(0, abs(len(self.bunker_y) - 1))
                 target = [self.bunker_x[i], self.bunker_y[i]]
                 self.unit_selected = "BUNKER"
                 return actions.FunctionCall(_SELECT_POINT, [_SELECT_ALL, target])
         # Séléctionner une caserne
         elif unit == "BARRACK":
             if self.barracks_y.any() and _SELECT_POINT in self.obs.observation['available_actions']:
-                i = random.randint(0, len(self.barracks_y) - 1)
+                i = random.randint(0, abs(len(self.barracks_y) - 1))
                 target = [self.barracks_x[i], self.barracks_y[i]]
                 self.unit_selected = "BARRACK"
                 return actions.FunctionCall(_SELECT_POINT, [_SELECT_ALL, target])
@@ -725,7 +723,7 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         # Séléctionner une caserne
         elif unit == "SUPPLYDEPOT":
             if self.depot_y.any() and _SELECT_POINT in self.obs.observation['available_actions']:
-                i = random.randint(0, len(self.depot_y) - 1)
+                i = random.randint(0, abs(len(self.depot_y) - 1))
                 target = [self.depot_x[i], self.depot_y[i]]
                 self.unit_selected = "SUPPLYDEPOT"
                 return actions.FunctionCall(_SELECT_POINT, [_SELECT_ALL, target])
@@ -776,7 +774,7 @@ class SparseAgentDefensive(base_agent.BaseAgent):
                 unit_y, unit_x = (self.unit_type == _NEUTRAL_MINERAL_FIELD).nonzero()
 
                 if unit_y.any():
-                    i = random.randint(0, len(unit_y) - 1)
+                    i = random.randint(0, abs(len(unit_y) - 1))
                     m_x = unit_x[i]
                     m_y = unit_y[i]
 
@@ -795,7 +793,7 @@ class SparseAgentDefensive(base_agent.BaseAgent):
             if _HARVEST_GATHER in self.obs.observation['available_actions']:
                 if self.refinery_count == 1 or self.scv_in_vespene1 < 3:
                     if version.parse(_PYSC2_VERSION) > version.parse('2.0.1'):
-                        rand = random.randint(0, len(self.vespene_y) - 1)
+                        rand = random.randint(0, abs(len(self.vespene_y) - 1))
                         target = [int(self.vespene_x[rand]), int(self.vespene_y[rand])]
                     else:
                         target = [int(self.vespene_center[0][0]), int(self.vespene_center[0][1])]
@@ -804,7 +802,7 @@ class SparseAgentDefensive(base_agent.BaseAgent):
                     return actions.FunctionCall(_HARVEST_GATHER, [_NOT_QUEUED, target])
                 elif self.refinery_count == 2 or self.scv_in_vespene1 < 3:
                     if version.parse(_PYSC2_VERSION) > version.parse('2.0.1'):
-                        rand = random.randint(0, len(self.vespene_y) - 1)
+                        rand = random.randint(0, abs(len(self.vespene_y) - 1))
                         target = [int(self.vespene_x[rand]), int(self.vespene_y[rand])]
                     else:
                         target = [int(self.vespene_center[1][0]), int(self.vespene_center[1][1])]
@@ -838,12 +836,11 @@ class SparseAgentDefensive(base_agent.BaseAgent):
                 x = random.randint(30, 58)
                 y = random.randint(22, 75)
 
-            action = random.randint(0, 1)
+            action = random.randint(0, 6)
 
-            if action == 0 and self.bunker_count < 4 and _BUILD_BUNKER in self.obs.observation['available_actions']:
+            if 0 <= action < 5 and self.bunker_count < 4 and _BUILD_BUNKER in self.obs.observation['available_actions']:
                 return actions.FunctionCall(_BUILD_BUNKER, [_NOT_QUEUED, [x, y]])
-            else:
-                if _BUILD_MISSILE_TURRET in self.obs.observation['available_actions']:
+            elif self.missile_turret_count < 4 and _BUILD_MISSILE_TURRET in self.obs.observation['available_actions']:
                     return actions.FunctionCall(_BUILD_MISSILE_TURRET, [_NOT_QUEUED, [x, y]])
             return self.action_do_nothing()
 
@@ -857,7 +854,7 @@ class SparseAgentDefensive(base_agent.BaseAgent):
             if self.bunker_y.any() and \
                     _MOVE_SCREEN in self.obs.observation['available_actions'] and \
                     self.unit_selected == "ARMY":
-                i = random.randint(0, len(self.bunker_y) - 1)
+                i = random.randint(0, abs(len(self.bunker_y) - 1))
                 target = [self.bunker_x[i], self.bunker_y[i]]
                 return actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, target])
             elif _MOVE_MINIMAP in self.obs.observation['available_actions'] and self.unit_selected == "ARMY":
@@ -898,7 +895,7 @@ class SparseAgentDefensive(base_agent.BaseAgent):
             if _ATTACK_MINIMAP in self.obs.observation['available_actions']:
                 # Si un enemie est présent sur la minimap alors qu'il reste presque plus d'ennemies visible
                 if 0 < len(self.enemy_y) < 30:
-                    random_choice = random.randint(0, len(self.enemy_y) - 1)
+                    random_choice = random.randint(0, abs(len(self.enemy_y) - 1))
                     target = [self.enemy_x[random_choice], self.enemy_y[random_choice]]
                 # Sinon position stratégique pseudo-aléatoire
                 else:
@@ -1112,7 +1109,7 @@ class SparseAgentDefensive(base_agent.BaseAgent):
     def action_build_refinery(self):
         if _BUILD_REFINERY in self.obs.observation['available_actions']:
             if version.parse(_PYSC2_VERSION) > version.parse('2.0.1'):
-                rand = random.randint(0, len(self.vespene_y) - 1)
+                rand = random.randint(0, abs(len(self.vespene_y) - 1))
                 target = [int(self.vespene_x[rand]), int(self.vespene_y[rand])]
             else:
                 if self.refinery_count <= 0:
