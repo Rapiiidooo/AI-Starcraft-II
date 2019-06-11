@@ -272,8 +272,9 @@ class SparseAgentDefensive(base_agent.BaseAgent):
         self.enemy_x = None
         self.enemy_y = None
         # Variable pour tester la position à la main
-        self.testx = 34
+        self.testx = 80
         self.testy = 0
+        self.essai = 0
 
         if os.path.isfile(DATA_FILE + '.gz'):
             self.qlearn.q_table = pd.read_pickle(DATA_FILE + '.gz', compression='gzip')
@@ -625,6 +626,12 @@ class SparseAgentDefensive(base_agent.BaseAgent):
 
         # Initialisation de l'état actuelle des éléments du joueurs.
         self.init_current_state(obs)
+
+        self.essai += 1
+        if self.essai <= 1:
+            return actions.FunctionCall(_NO_OP, [])
+        else:
+            self.essai = 0
 
         # Ajout de la précèdente action et des scores y résultant dans la table Qlearning
         if self.previous_action is not None:
@@ -1011,6 +1018,7 @@ class SparseAgentDefensive(base_agent.BaseAgent):
                     # Si première fois ou mur cassé
                     if self.supply_depot_count == 0 or \
                             (self.anti_zerg_rush_wall is True and [46, 34] not in coord_supply):
+                        self.testx += 1
                         target = [46, 34]
                     # Si première fois ou mur cassé
                     elif self.supply_depot_count == 1 or \
@@ -1249,7 +1257,7 @@ def run(agent):
                         use_feature_units=True,
                         hide_specific_actions=False
                     ),
-                    step_mul=8,
+                    step_mul=1,
                     game_steps_per_episode=0,
                     visualize=False) as env:
                 run_loop.run_loop(agent, env)
